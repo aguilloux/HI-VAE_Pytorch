@@ -14,6 +14,10 @@ import torch.nn.functional as F
 import utils
 import csv
 
+import utils.likelihood
+import utils.data_processing
+import utils.theta_estimation
+
 
 class HIVAE(nn.Module):
     def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition=[], feat_types_file=[]):
@@ -72,7 +76,7 @@ class HIVAE(nn.Module):
         """
         
         # Batch normalization 
-        X_list, normalization_params = utils.batch_normalization(batch_data_oberved, self.feat_types_list, batch_miss)
+        X_list, normalization_params = utils.data_processing.batch_normalization(batch_data_oberved, self.feat_types_list, batch_miss)
         
         # Encode
         X = torch.cat(X_list, dim=1) 
@@ -132,20 +136,20 @@ class HIVAE(nn.Module):
         p_params = {}
 
         # Compute p(z|s)
-        mean_pz, log_var_pz = utils.z_prior_GMM(samples["s"], self.z_distribution_layer)
+        mean_pz, log_var_pz = utils.statistic.z_prior_GMM(samples["s"], self.z_distribution_layer)
         p_params["z"] = (mean_pz, log_var_pz)
 
         # Compute deterministic y layer
         samples["y"] = self.y_layer(samples["z"])
 
         # Partition y
-        grouped_samples_y = utils.y_partition(samples["y"], self.feat_types_list, self.y_dim_partition)
+        grouped_samples_y = utils.data_processing.y_partition(samples["y"], self.feat_types_list, self.y_dim_partition)
 
         # Compute θ parameters    
-        theta = utils.theta_estimation_from_ys(grouped_samples_y, samples["s"], self.feat_types_list, miss_list, self.theta_layer)
+        theta = utils.theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples["s"], self.feat_types_list, miss_list, self.theta_layer)
 
         # Compute log-likelihood and reconstructed data
-        p_params["x"], log_p_x, log_p_x_missing, samples["x"] = utils.loglik_evaluation(
+        p_params["x"], log_p_x, log_p_x_missing, samples["x"] = utils.likelihood.loglik_evaluation(
             batch_data_list, self.feat_types_list, miss_list, theta, normalization_params
         )
 
@@ -337,11 +341,11 @@ class HIVAE_inputDropout(HIVAE):
         """
 
         #Create the proposal of q(s|x^o)
-        samples_s, s_params = utils.s_proposal_multinomial(X, self.s_layer, tau)
+        samples_s, s_params = utils.statistic.s_proposal_multinomial(X, self.s_layer, tau)
 
         # Compute q(z|s,x^o)
         batch_size = X.shape[0]
-        samples_z, z_params = utils.z_proposal_GMM(X, samples_s, batch_size, self.z_dim, self.z_layer)
+        samples_z, z_params = utils.statistic.z_proposal_GMM(X, samples_s, batch_size, self.z_dim, self.z_layer)
 
         q_params = {"s": s_params, "z": z_params} 
         samples = {"s": samples_s, "z": samples_z}
