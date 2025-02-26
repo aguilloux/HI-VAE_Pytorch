@@ -14,7 +14,7 @@ import time
 import torch
 import torch.optim as optim
 import importlib
-import utils.statistic as statistic
+from utils import statistic, data_processing, visualization
 
 
 def save_model(model, filename):
@@ -70,11 +70,14 @@ def train_vae(vae_model, optimizer, train_data, miss_mask, true_miss_mask, types
 
         for i in range(n_batches):
             # Get batch data
-            data_list, miss_list = statistic.next_batch(train_data, types_dict, miss_mask, args.batch_size, i)
+            data_list, miss_list = data_processing.next_batch(train_data, types_dict, miss_mask, args.batch_size, i)
+
+            # Mask unknown data (set unobserved values to zero)
+            data_list_observed = [data * miss_list[:, i].view(args.batch_size, 1) for i, data in enumerate(data_list)]
 
             # Compute loss
             optimizer.zero_grad()
-            vae_res = vae_model.forward(data_list, miss_list, tau)
+            vae_res = vae_model.forward(data_list_observed, data_list, miss_list, tau)
             vae_res["neg_ELBO_loss"].backward()
             optimizer.step()
 
@@ -83,7 +86,7 @@ def train_vae(vae_model, optimizer, train_data, miss_mask, true_miss_mask, types
             avg_KL_z += vae_res["KL_z"].mean().item() / n_batches
 
         if epoch % args.display == 0:
-            statistic.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
+            visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
 
         # Save model periodically
         if epoch % args.save == 0:
@@ -117,17 +120,20 @@ def test_vae(vae_model, train_data, miss_mask, types_dict, args):
 
     with torch.no_grad():
         for i in range(n_batches):
-            data_list, miss_list = statistic.next_batch(train_data, types_dict, miss_mask, args.batch_size, i)
+            data_list, miss_list = data_processing.next_batch(train_data, types_dict, miss_mask, args.batch_size, i)
 
-            vae_res = vae_model.forward(data_list, miss_list, tau=1e-3)
+            # Mask unknown data (set unobserved values to zero)
+            data_list_observed = [data * miss_list[:, i].view(args.batch_size, 1) for i, data in enumerate(data_list)]
+
+            vae_res = vae_model.forward(data_list_observed, data_list, miss_list, tau=1e-3)
             avg_loss += vae_res["neg_ELBO_loss"].item()
 
-    print(f"Testing complete. Average ELBO: {avg_loss / n_batches:.8f}")
+    print(f"Testing complete. Average ELBO: {-avg_loss / n_batches:.8f}")
 
 
 if __name__ == "__main__":
     # Get arguments from parser
-    args = statistic.get_args(sys.argv[1:])
+    args = data_processing.get_args(sys.argv[1:])
 
     # Create directories for saving models
     args.save_dir = f'./saved_networks/{args.save_file}/'
@@ -137,7 +143,7 @@ if __name__ == "__main__":
     print(args)
 
     # Load training data
-    train_data, types_dict, miss_mask, true_miss_mask, n_samples = statistic.read_data(
+    train_data, types_dict, miss_mask, true_miss_mask, n_samples = data_processing.read_data(
         args.data_file, args.types_file, args.miss_file, args.true_miss_file
     )
 
