@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from torch.distributions import Normal, Categorical, Poisson
 
 
-def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normalization_params):
+def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normalization_params, n_generated_sample=1):
     """
     Evaluates the log-likelihood of observed and missing data.
 
@@ -34,6 +34,9 @@ def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normal
     
     normalization_params : list of dict
         List of normalization parameters for each feature, used in likelihood calculations.
+
+    n_generated_sample : int
+        Number of samples to be generated per an input data point
 
     Returns:
     --------
@@ -77,7 +80,7 @@ def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normal
         batch_data_ext = [batch_data, miss_list[:, feature_idx]]
 
         # Compute likelihood
-        out = loglik_function(batch_data_ext, feat_types_list[feature_idx], theta[feature_idx], normalization_params[feature_idx])
+        out = loglik_function(batch_data_ext, feat_types_list[feature_idx], theta[feature_idx], normalization_params[feature_idx], n_generated_sample)
 
         # Store computed values
         params_x.append(out['params'])
@@ -90,7 +93,7 @@ def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normal
 
 
 
-def loglik_real(batch_data, list_type, theta, normalization_params):
+def loglik_real(batch_data, list_type, theta, normalization_params, n_generated_sample):
     """
     Computes the log-likelihood for real-valued (continuous) data under a Gaussian assumption.
 
@@ -110,6 +113,9 @@ def loglik_real(batch_data, list_type, theta, normalization_params):
     normalization_params : tuple of (torch.Tensor, torch.Tensor)
         - `data_mean`: Mean used for normalizing the original dataset.
         - `data_var`: Variance used for normalizing the original dataset.
+
+    n_generated_sample : int
+        Number of samples to be generated per an input data point
 
     Returns:
     --------
@@ -156,13 +162,13 @@ def loglik_real(batch_data, list_type, theta, normalization_params):
         "params": [est_mean, est_var],
         "log_p_x": log_p_x * missing_mask,
         "log_p_x_missing": log_p_x * (1.0 - missing_mask),
-        "samples": Normal(est_mean, torch.sqrt(est_var)).sample()
+        "samples": Normal(est_mean, torch.sqrt(est_var)).sample(sample_shape=(n_generated_sample,))
     }
 
     return output
 
 
-def loglik_pos(batch_data, list_type, theta, normalization_params):
+def loglik_pos(batch_data, list_type, theta, normalization_params, n_generated_sample):
     """
     Computes the log-likelihood for positive real-valued data using a log-normal distribution.
 
@@ -182,6 +188,9 @@ def loglik_pos(batch_data, list_type, theta, normalization_params):
     normalization_params : tuple of (torch.Tensor, torch.Tensor)
         - `data_mean_log`: Log mean of the dataset.
         - `data_var_log`: Log variance of the dataset.
+
+    n_generated_sample : int
+        Number of samples to be generated per an input data point
 
     Returns:
     --------
@@ -219,11 +228,11 @@ def loglik_pos(batch_data, list_type, theta, normalization_params):
         "params": [est_mean, est_var],
         "log_p_x": log_p_x * missing_mask,
         "log_p_x_missing": log_p_x * (1.0 - missing_mask),
-        "samples": torch.clamp(torch.exp(Normal(est_mean, torch.sqrt(est_var)).sample()) - 1.0, min=0, max=1e20)
+        "samples": torch.clamp(torch.exp(Normal(est_mean, torch.sqrt(est_var)).sample(sample_shape=(n_generated_sample, ))) - 1.0, min=0, max=1e20)
     }
 
 
-def loglik_cat(batch_data, list_type, theta, normalization_params):
+def loglik_cat(batch_data, list_type, theta, normalization_params, n_generated_sample):
     """
     Computes the log-likelihood for categorical data.
 
@@ -238,6 +247,9 @@ def loglik_cat(batch_data, list_type, theta, normalization_params):
     
     theta : torch.Tensor
         Logits for categorical distribution.
+
+    n_generated_sample : int
+        Number of samples to be generated per an input data point
 
     Returns:
     --------
@@ -257,11 +269,11 @@ def loglik_cat(batch_data, list_type, theta, normalization_params):
         "params": theta,
         "log_p_x": log_p_x * missing_mask,
         "log_p_x_missing": log_p_x * (1.0 - missing_mask),
-        "samples": F.one_hot(Categorical(logits=theta).sample(), num_classes=int(list_type["dim"]))
+        "samples": F.one_hot(Categorical(logits=theta).sample(sample_shape=(n_generated_sample, )), num_classes=int(list_type["dim"]))
     }
 
 
-def loglik_ordinal(batch_data, list_type, theta, normalization_params):
+def loglik_ordinal(batch_data, list_type, theta, normalization_params, n_generated_sample):
     """
     Computes the log-likelihood for ordinal data using a cumulative distribution approach.
 
@@ -277,6 +289,9 @@ def loglik_ordinal(batch_data, list_type, theta, normalization_params):
     theta : tuple of (torch.Tensor, torch.Tensor)
         - `partition_param`: Parameters defining ordinal category partitions.
         - `mean_param`: Mean parameter for ordinal variable.
+
+    n_generated_sample : int
+        Number of samples to be generated per an input data point
 
     Returns:
     --------
@@ -308,9 +323,12 @@ def loglik_ordinal(batch_data, list_type, theta, normalization_params):
     log_p_x = -F.cross_entropy(torch.log(mean_probs), true_values.argmax(dim=1), reduction="none")
 
     # Generate samples from the ordinal distribution
-    sampled_values = torch.distributions.Categorical(logits=mean_probs.log()).sample()
-    samples = (torch.arange(int(list_type['dim']), device=sampled_values.device)
-                         .unsqueeze(0) < (sampled_values + 1).unsqueeze(1)).float()
+    sampled_values = torch.distributions.Categorical(logits=mean_probs.log()).sample(sample_shape=(n_generated_sample, ))
+    samples = []
+    for i in range(n_generated_sample):
+        samples.append((torch.arange(int(list_type['dim']), device=sampled_values.device)
+                            .unsqueeze(0) < (sampled_values[i] + 1).unsqueeze(1)).float().unsqueeze(0))
+    samples = torch.cat(samples, dim=0)
     
     return {
         "params": mean_probs,
@@ -320,7 +338,7 @@ def loglik_ordinal(batch_data, list_type, theta, normalization_params):
     }
 
 
-def loglik_count(batch_data, list_type, theta, normalization_params):
+def loglik_count(batch_data, list_type, theta, normalization_params, n_generated_sample):
     """
     Computes the log-likelihood for count data using a Poisson distribution.
 
@@ -335,6 +353,9 @@ def loglik_count(batch_data, list_type, theta, normalization_params):
     
     theta : torch.Tensor
         Predicted Poisson rate (lambda).
+
+    n_generated_sample : int
+        Number of samples to be generated per an input data point
 
     Returns:
     --------
@@ -359,5 +380,5 @@ def loglik_count(batch_data, list_type, theta, normalization_params):
         "params": est_lambda,
         "log_p_x": log_p_x * missing_mask,
         "log_p_x_missing": log_p_x * (1.0 - missing_mask),
-        "samples": Poisson(est_lambda).sample()
+        "samples": Poisson(est_lambda).sample(sample_shape=(n_generated_sample, ))
     }

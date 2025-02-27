@@ -140,7 +140,7 @@ def samples_concatenation(samples):
         Concatenated feature data across batches.
     """
     
-    samples_x = torch.cat([torch.cat(batch['x'], dim=1) for batch in samples], dim=0)
+    samples_x = torch.cat([torch.cat(batch['x'], dim=-1) for batch in samples], dim=-2)
     samples_y = torch.cat([batch['y'] for batch in samples], dim=0)
     samples_z = torch.cat([batch['z'] for batch in samples], dim=0)
     samples_s = torch.cat([batch['s'] for batch in samples], dim=0)
