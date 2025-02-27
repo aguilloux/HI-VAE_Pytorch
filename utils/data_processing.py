@@ -162,7 +162,8 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
         with open(miss_file, 'r') as f:
             missing_positions = [[int(x) for x in rec] for rec in csv.reader(f, delimiter=',')]
             missing_positions = torch.tensor(missing_positions, dtype=torch.long)
-        miss_mask[missing_positions[:, 0] - 1, missing_positions[:, 1] - 1] = 0  # CSV indexes start at 1
+        if missing_positions.numel() != 0:
+            miss_mask[missing_positions[:, 0] - 1, missing_positions[:, 1] - 1] = 0  # CSV indexes start at 1
     
     return data, types_dict, miss_mask, true_miss_mask, n_samples
 
