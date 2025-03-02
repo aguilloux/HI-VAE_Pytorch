@@ -463,7 +463,7 @@ def loglik_count(batch_data, list_type, theta, normalization_params, n_generated
     est_lambda = torch.clamp(F.softplus(theta), min=epsilon, max=1e20)
 
     # Compute log-likelihood
-    log_p_x = -torch.sum(F.poisson_nll_loss(torch.log(est_lambda), data, full=False, reduction='none'), dim=1)
+    log_p_x = torch.sum(data * torch.log(est_lambda + 1e-8) - est_lambda - torch.lgamma(data + 1), dim=1)
 
     return {
         "params": est_lambda,
