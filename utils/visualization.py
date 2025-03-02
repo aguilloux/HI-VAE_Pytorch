@@ -10,30 +10,32 @@ Created on Mon Feb 17 20:35:11 2025
 
 import time
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set(style="whitegrid", font="STIXGeneral", context="talk", palette="colorblind")
 
 
-def plot_data(features_df, feat_types_dict):
+def plot_data(data, feat_types_dict):
     """
     Visualize different data types.
 
     Args:
-    - features_df (pd.Dataframe): Input data (shape: [n_samples, n_features]).
+    - data (np.ndarray): Input data (shape: [n_samples, n_features]).
     - feat_types_dict (list): List of feature type dictionaries (e.g., [{'type': 'real', 'dim': 1}, ...]).
     """
     num_features = len(feat_types_dict)
     n_cols = num_features // 2 + num_features % 2
     fig, axes = plt.subplots(n_cols, 2, figsize=(18, 3 * num_features))
 
+    feat_idx = 0
     for i, feature in enumerate(feat_types_dict):
         feature_type = feature['type']
         feat_name = "feat_"+ str(i+1)
 
         ax= axes[i // 2, i % 2]
         if feature_type in ['cat', 'count', 'ordinal']:  # Count, ordinal & categorical data
-            feature_data = features_df[[feat_name]].astype(int)
+            feature_data = pd.DataFrame(data[:, feat_idx].int(), columns=[feat_name])
             # sns.countplot(data=feature_data, x=feat_name, hue=feat_name, palette="Set1", alpha=0.8, legend=False, ax=ax)
             sns.countplot(data=feature_data, x=feat_name, hue=feat_name, alpha=0.8, legend=False, ax=ax)
             ax.set_title(f"Count plot of {feat_name} ({feature_type})", fontsize=16, fontweight="bold")
@@ -51,13 +53,20 @@ def plot_data(features_df, feat_types_dict):
                 ax.set_xticks(reduced_ticks)  # Ensure same number of locations
                 ax.set_xticklabels([label.get_text() for label in reduced_labels])  # Set labels
 
+        elif feature_type in ["surv"]:
+            feature_data = pd.DataFrame(data[:, feat_idx], columns=[feat_name])
+            sns.histplot(feature_data, kde=False, color="royalblue", ax=ax)
+            ax.set_title(f"Distribution plot of {feat_name} ({feature_type})", fontsize=16, fontweight="bold")
+            ax.legend().set_visible(False)
+            feat_idx += 1
 
         else:
-            feature_data = features_df[[feat_name]]
+            feature_data = pd.DataFrame(data[:, feat_idx], columns=[feat_name])
             sns.histplot(feature_data, kde=False, color="royalblue", ax=ax)
             ax.set_title(f"Distribution plot of {feat_name} ({feature_type})", fontsize=16, fontweight="bold")
             ax.legend().set_visible(False)
         
+        feat_idx += 1
         # Enhance visualization
         ax.grid(True)
         ax.set_xlabel("")
@@ -76,20 +85,29 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
     - types_dict (list): List of feature type dictionaries (e.g., [{'type': 'real', 'dim': 1}, ...]).
     - num_sel_samples (int): Number of random samples to plot (default: 100).
     """
-    num_features = len(types_dict)
-    fig, axes = plt.subplots(num_features, 2, figsize=(20, 4 * num_features))
+    num_feats = len(types_dict)
+    fig, axes = plt.subplots(num_feats, 2, figsize=(20, 4 * num_feats))
 
-    if num_features == 1:
+    if num_feats == 1:
         axes = np.expand_dims(axes, axis=0)  # Ensure subplots remain consistent for a single feature
 
+    feat_idx = 0
     for i, feature in enumerate(types_dict):
         feature_type = feature['type']
 
-        # Extract observed and missing data
-        true_observed = true_values[miss_mask[:, i] == 1, i].cpu().numpy()
-        true_missing = true_values[miss_mask[:, i] == 0, i].cpu().numpy()
-        est_observed = estimated_values[miss_mask[:, i] == 1, i].cpu().numpy()
-        est_missing = estimated_values[miss_mask[:, i] == 0, i].cpu().numpy()
+        if feature_type in ['surv']:
+            # Extract observed and missing data
+            true_observed = true_values[true_values[:, feat_idx + 1] == 1, feat_idx].cpu().numpy()
+            true_missing = true_values[true_values[:, feat_idx + 1] == 0, feat_idx].cpu().numpy()
+            est_observed = estimated_values[true_values[:, feat_idx + 1] == 1, feat_idx].cpu().numpy()
+            est_missing = estimated_values[true_values[:, feat_idx + 1] == 0, feat_idx + 1].cpu().numpy()
+            feat_idx += 1
+        else:
+            # Extract observed and missing data
+            true_observed = true_values[miss_mask[:, i] == 1, feat_idx].cpu().numpy()
+            true_missing = true_values[miss_mask[:, i] == 0, feat_idx].cpu().numpy()
+            est_observed = estimated_values[miss_mask[:, i] == 1, feat_idx].cpu().numpy()
+            est_missing = estimated_values[miss_mask[:, i] == 0, feat_idx].cpu().numpy()
 
         # Select a subset of samples for visualization
         num_obs_samples = min(num_sel_samples, len(true_observed))
@@ -115,7 +133,7 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
         ax_miss.set_ylabel("Value")
         ax_miss.grid(True)
 
-        if feature_type in ['real', 'pos', 'cat']:  # Continuous & categorical data
+        if feature_type in ['real', 'pos', 'cat', 'surv']:  # Continuous & categorical data
             ax_obs.scatter(range(num_obs_samples), true_observed_subset, label="True", marker='o', alpha=0.6)
             ax_obs.scatter(range(num_obs_samples), est_observed_subset, label="Estimation", marker='x', alpha=0.6)
 
@@ -138,6 +156,7 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
 
         ax_obs.legend()
         ax_miss.legend()
+        feat_idx += 1
 
     plt.suptitle("True vs. Estimated Values for Different Data Types", fontsize=20, fontweight='bold')
     plt.tight_layout(rect=[0, 0., 1., .98])  # Adjust for suptitle
