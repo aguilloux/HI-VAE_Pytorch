@@ -370,8 +370,7 @@ def error_computation(x_train, x_hat, types_dict, miss_mask):
 
     for d, feature in enumerate(types_dict):
         feature_type = feature['type']
-        dim = int(feature['dim']) if 'dim' in feature else 1  # Default to 1 if 'dim' is not provided
-        ind_end = ind_ini + (1 if feature_type in ['cat', 'ordinal'] else dim)
+        ind_end = ind_ini + int(feature['dim'])
 
         # Masked values
         observed_mask = miss_mask[:, d] == 1

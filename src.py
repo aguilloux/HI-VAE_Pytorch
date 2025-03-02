@@ -54,7 +54,6 @@ class HIVAE(nn.Module):
         for i, feat in enumerate(self.feat_types_list):
             
             feat_y_dim = self.y_dim_partition[i]
-            feat_x_dim = int(feat['dim'])
             
             if feat['type'] in ['real', 'pos']:
                 self.theta_layer["feat_" + str(i)] = {'mean' : nn.Linear(feat_y_dim + s_dim, 1, bias=False),
@@ -66,13 +65,15 @@ class HIVAE(nn.Module):
                                                       'sigma_C' : nn.Linear(s_dim, 1, bias=False)}
 
             elif feat['type'] in ['count']:
-                self.theta_layer["feat_" + str(i)] = nn.Linear(feat_y_dim + s_dim, feat_x_dim, bias=False)
+                self.theta_layer["feat_" + str(i)] = nn.Linear(feat_y_dim + s_dim, 1, bias=False)
 
             elif feat['type'] in ['cat']:
-                self.theta_layer["feat_" + str(i)] = nn.Linear(feat_y_dim + s_dim, feat_x_dim - 1, bias=False)
+                n_class = int(feat['nclass'])
+                self.theta_layer["feat_" + str(i)] = nn.Linear(feat_y_dim + s_dim, n_class - 1, bias=False)
 
             else: # ordinal
-                self.theta_layer["feat_" + str(i)] = {'theta' : nn.Linear(s_dim, feat_x_dim - 1, bias=False),
+                n_class = int(feat['nclass'])
+                self.theta_layer["feat_" + str(i)] = {'theta' : nn.Linear(s_dim, n_class - 1, bias=False),
                                                       'mean' : nn.Linear(feat_y_dim + s_dim, 1, bias=False)}
 
 

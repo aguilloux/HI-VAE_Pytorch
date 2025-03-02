@@ -407,14 +407,14 @@ def loglik_ordinal(batch_data, list_type, theta, normalization_params, n_generat
     mean_probs = torch.clamp(mean_probs, min=epsilon, max=1.0)
 
     # Compute log-likelihood
-    true_values = F.one_hot(data.sum(dim=1).long() - 1, num_classes=int(list_type["dim"]))
+    true_values = F.one_hot(data.sum(dim=1).long() - 1, num_classes=int(list_type["nclass"]))
     log_p_x = -F.cross_entropy(torch.log(mean_probs), true_values.argmax(dim=1), reduction="none")
 
     # Generate samples from the ordinal distribution
     sampled_values = torch.distributions.Categorical(logits=mean_probs.log()).sample(sample_shape=(n_generated_sample, ))
     samples = []
     for i in range(n_generated_sample):
-        samples.append((torch.arange(int(list_type['dim']), device=sampled_values.device)
+        samples.append((torch.arange(int(list_type["nclass"]), device=sampled_values.device)
                             .unsqueeze(0) < (sampled_values[i] + 1).unsqueeze(1)).float().unsqueeze(0))
     samples = torch.cat(samples, dim=0)
     
