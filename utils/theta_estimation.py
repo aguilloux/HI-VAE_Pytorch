@@ -46,7 +46,8 @@ def theta_estimation_from_ys(samples_y, samples_s, feat_types_list, miss_list, t
         "pos": theta_pos,
         "count": theta_count,
         "cat": theta_cat,
-        "ordinal": theta_ordinal
+        "ordinal": theta_ordinal,
+        "surv": theta_surv
     }
 
     theta = []
@@ -125,6 +126,63 @@ def theta_real(observed_y, missing_y, observed_s, missing_s, condition_indices, 
     return [h2_mean, h2_sigma]
 
 
+def theta_surv(observed_y, missing_y, observed_s, missing_s, condition_indices, theta_layer):
+    """
+    Computes the mean and standard deviation parameter of log-normal distribution for survival data (survival time and censoring time).
+
+    This function estimates parameters for survival data in a survival analysis model.
+
+    Parameters:
+    -----------
+    (Same as `theta_real`)
+
+    Returns:
+    --------
+    list :
+        `[h2_mean_T, h2_sigma_T, h2_mean_C, h2_sigma_C]` where:
+        - `h2_mean_T` is the estimated mean layer for survival time.
+        - `h2_sigma_T` is the estimated standard deviation layer for survival time.
+        - `h2_mean_C` is the estimated mean layer for censoring time.
+        - `h2_sigma_C` is the estimated standard deviation layer for censoring time.
+
+    Notes:
+    ------
+    - Identical to `theta_real`, but tailored for **positive** real-valued survival data.
+    """
+
+    # Mean layer for survival time
+    h2_mean_T = observed_data_layer(
+        torch.cat([observed_y, observed_s], dim=1),
+        torch.cat([missing_y, missing_s], dim=1),
+        condition_indices,
+        layer=theta_layer["mean_T"]
+    )
+
+    # Sigma layer for survival time
+    h2_sigma_T = observed_data_layer(
+        torch.cat([observed_s], dim=1),
+        torch.cat([missing_s], dim=1),
+        condition_indices,
+        layer=theta_layer["sigma_T"]
+    )
+
+    # Mean layer for censoring time
+    h2_mean_C = observed_data_layer(
+        torch.cat([observed_y, observed_s], dim=1),
+        torch.cat([missing_y, missing_s], dim=1),
+        condition_indices,
+        layer=theta_layer["mean_C"]
+    )
+
+    # Sigmalayer for censoring time
+    h2_sigma_C = observed_data_layer(
+        torch.cat([observed_s], dim=1),
+        torch.cat([missing_s], dim=1),
+        condition_indices,
+        layer=theta_layer["sigma_C"]
+    )
+
+    return [h2_mean_T, h2_sigma_T, h2_mean_C, h2_sigma_C]
 
 def theta_pos(observed_y, missing_y, observed_s, missing_s, condition_indices, theta_layer):
     """

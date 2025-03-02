@@ -66,7 +66,8 @@ def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normal
         "pos": loglik_pos,
         "count": loglik_count,
         "cat": loglik_cat,
-        "ordinal": loglik_ordinal
+        "ordinal": loglik_ordinal,
+        "surv": loglik_surv,
     }
 
     # Compute log-likelihood for each feature type
@@ -167,6 +168,93 @@ def loglik_real(batch_data, list_type, theta, normalization_params, n_generated_
 
     return output
 
+def loglik_surv(batch_data, list_type, theta, normalization_params, n_generated_sample):
+    """
+    Computes the log-likelihood for survival data using a log-normal distribution.
+
+    Parameters:
+    -----------
+    batch_data : tuple of (torch.Tensor, torch.Tensor)
+        - `data`: Observed positive real-valued survival times and censoring indicators.
+        - `missing_mask`: Binary mask (1 = observed, 0 = missing).
+
+    list_type : dict
+        Dictionary specifying feature types (not used in function but kept for compatibility).
+
+    theta : tuple of (torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor)
+        - `est_mean_T`: Predicted log-mean for survival time.
+        - `est_var_T`: Predicted log-variance for survival time.
+        - `est_mean_C`: Predicted log-mean for censoring time.
+        - `est_var_C`: Predicted log-variance for censoring time.
+
+    normalization_params : tuple of (torch.Tensor, torch.Tensor)
+        - `data_mean_log`: Log mean of the dataset.
+        - `data_var_log`: Log variance of the dataset.
+
+    n_samples : int
+        Number of samples to generate per input data point.
+
+    Returns:
+    --------
+    output : dict
+        - `params`: Estimated mean and variance for survival and censoring.
+        - `log_p_x`: Log-likelihood of observed data.
+        - `log_p_x_missing`: Log-likelihood of missing data.
+        - `samples`: Sampled values from the estimated log-normal distribution.
+    """
+
+    epsilon = 1e-5  # Small value for numerical stability
+
+    # Extract normalization parameters
+    data_mean_log, data_var_log = normalization_params
+
+    # Extract observed data and mask
+    data, missing_mask = batch_data
+    T_surv, delta = data[:, 0].unsqueeze(1), data[:, 1]
+    data_log = torch.log1p(T_surv)  # Log-transform survival times
+    missing_mask = missing_mask.float()
+
+    # Extract predicted parameters and enforce positivity
+    est_mean_T, est_var_T, est_mean_C, est_var_C = theta
+    est_var_T = F.softplus(est_var_T).clamp(min=epsilon, max=1.0)
+    est_var_C = F.softplus(est_var_C).clamp(min=epsilon, max=1.0)
+
+    # Transform estimated parameters to original scale
+    sqrt_var_log = torch.sqrt(data_var_log)
+    est_mean_T = sqrt_var_log * est_mean_T + data_mean_log
+    est_var_T *= data_var_log
+    est_mean_C = sqrt_var_log * est_mean_C + data_mean_log
+    est_var_C *= data_var_log
+
+    # Compute log-likelihood components
+    def log_normal_likelihood(data, mean, var):
+        return (-0.5 * (data - mean).pow(2) / var
+                - 0.5 * torch.log(2 * torch.pi * var)
+                - data)
+
+    log_p_x_T = log_normal_likelihood(data_log, est_mean_T, est_var_T).sum(dim=1)
+    log_p_x_C = log_normal_likelihood(data_log, est_mean_C, est_var_C).sum(dim=1)
+
+    # Compute overall log-likelihood based on censoring indicator
+    log_p_x = (log_p_x_T * delta + log_p_x_C * (1 - delta))
+
+    # Generate samples from estimated log-normal distributions
+    max_threshold = T_surv.max().item()
+    def sample_from_log_normal(mean, var):
+        return torch.clamp(
+            torch.exp(Normal(mean, torch.sqrt(var)).sample((n_generated_sample,))) - 1.0,
+            min=0, max=max_threshold
+        )
+
+    sample_T = sample_from_log_normal(est_mean_T, est_var_T)
+    sample_C = sample_from_log_normal(est_mean_C, est_var_C)
+
+    return {
+        "params": [est_mean_T, est_var_T, est_mean_C, est_var_C],
+        "log_p_x": log_p_x * missing_mask,
+        "log_p_x_missing": log_p_x * (1.0 - missing_mask),
+        "samples": torch.cat((sample_T, sample_C), dim=-1),
+    }
 
 def loglik_pos(batch_data, list_type, theta, normalization_params, n_generated_sample):
     """

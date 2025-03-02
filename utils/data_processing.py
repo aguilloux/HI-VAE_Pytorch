@@ -114,23 +114,24 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
     # Construct processed data matrices
     data_complete = []
     
-    for i, dtype in enumerate(types_dict):
-        if dtype['type'] == 'cat':
+    feat_idx = 0
+    for i, feature in enumerate(types_dict):
+        if feature['type'] == 'cat':
             # One-hot encoding for categorical data
-            cat_data = data[:, i].to(torch.int64)
+            cat_data = data[:, feat_idx].to(torch.int64)
             unique_vals, indexes = torch.unique(cat_data, return_inverse=True)
-            new_categories = torch.arange(int(dtype['dim']), dtype=torch.int64)
+            new_categories = torch.arange(int(feature['nclass']), dtype=torch.int64)
             mapped_categories = new_categories[indexes]
             
             one_hot = torch.zeros((data.shape[0], len(new_categories)))
             one_hot[torch.arange(data.shape[0]), mapped_categories] = 1
             data_complete.append(one_hot)
         
-        elif dtype['type'] == 'ordinal':
+        elif feature['type'] == 'ordinal':
             # Thermometer encoding for ordinal data
-            ordinal_data = data[:, i].to(torch.int64)
+            ordinal_data = data[:, feat_idx].to(torch.int64)
             unique_vals, indexes = torch.unique(ordinal_data, return_inverse=True)
-            new_categories = torch.arange(int(dtype['dim']), dtype=torch.int64)
+            new_categories = torch.arange(int(feature['nclass']), dtype=torch.int64)
             mapped_categories = new_categories[indexes]
             
             thermometer = torch.zeros((data.shape[0], len(new_categories) + 1))
@@ -139,18 +140,24 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
             thermometer = torch.cumsum(thermometer, dim=1)
 
             data_complete.append(thermometer[:, :-1])  # Exclude last column
-        
-        elif dtype['type'] == 'count':
+
+        elif feature['type'] == 'count':
             # Shift zero-based counts if necessary
-            count_data = data[:, i].unsqueeze(1)
+            count_data = data[:, feat_idx].unsqueeze(1)
             if torch.min(count_data) == 0:
                 count_data += 1
             data_complete.append(count_data)
+
+        elif feature['type'] == 'surv':
+            # Survival data take two columns
+            data_complete.append(data[:, feat_idx : feat_idx + 2])
+            feat_idx += 1
         
         else:
             # Keep continuous data as is
-            data_complete.append(data[:, i].unsqueeze(1))
+            data_complete.append(data[:, feat_idx].unsqueeze(1))
     
+        feat_idx += 1
     # Concatenate processed features
     data = torch.cat(data_complete, dim=1)
 
@@ -205,7 +212,7 @@ def next_batch(data, types_dict, miss_mask, batch_size, index_batch):
     # Split variables in the batch
     data_list, initial_index = [], 0
     for d in types_dict:
-        dim = int(d['dim'])
+        dim = (int(d['nclass']) if d["type"] in ['cat', 'ordinal'] else int(d['dim']))
         data_list.append(batch_xs[:, initial_index : initial_index + dim])
         initial_index += dim
     
@@ -298,6 +305,20 @@ def batch_normalization(batch_data_list, feat_types_list, miss_list):
             
             normalization_parameters.append((0.0, 1.0))
 
+        elif feature_type == 'surv':
+            # Log transformation (No variance normalization)
+            observed_data_log = torch.log1p(observed_data[:, 0])
+            data_var_log, data_mean_log = torch.var_mean(observed_data_log, unbiased=False)
+            data_var_log = torch.clamp(data_var_log, min=1e-6, max=1e20)
+
+            normalized_observed = (observed_data_log - data_mean_log) / torch.sqrt(data_var_log)
+            normalized_d = torch.zeros_like(d)
+            normalized_d[~missing_mask][:, 0] = normalized_observed
+            normalized_d[~missing_mask][:, 1] = observed_data[:, 1]
+            normalized_d[missing_mask] = 0
+
+            normalization_parameters.append((data_mean_log, data_var_log))
+
         else:
             # Keep categorical and ordinal values unchanged
             normalized_d = d.clone()
@@ -354,8 +375,8 @@ def discrete_variables_transformation(data, types_dict):
     
     ind_ini, output = 0, []
     for d in types_dict:
-        ind_end = ind_ini + int(d['dim'])
-        subset = data[:, ind_ini:ind_end]  # Extract relevant columns
+        ind_end = ind_ini + (int(d['nclass']) if d["type"] in ['cat', 'ordinal'] else int(d['dim']))
+        subset = data[:, ind_ini : ind_end]  # Extract relevant columns
 
         if d['type'] == 'cat':
             output.append(torch.argmax(subset, dim=1, keepdim=True))  # Argmax for categorical variables

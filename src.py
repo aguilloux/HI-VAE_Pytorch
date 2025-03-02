@@ -57,8 +57,14 @@ class HIVAE(nn.Module):
             feat_x_dim = int(feat['dim'])
             
             if feat['type'] in ['real', 'pos']:
-                self.theta_layer["feat_" + str(i)] = {'mean' : nn.Linear(feat_y_dim + s_dim, feat_x_dim, bias=False), 
-                                                      'sigma' : nn.Linear(s_dim, feat_x_dim, bias=False)}
+                self.theta_layer["feat_" + str(i)] = {'mean' : nn.Linear(feat_y_dim + s_dim, 1, bias=False),
+                                                      'sigma' : nn.Linear(s_dim, 1, bias=False)}
+            elif feat['type'] in ['surv']:
+                self.theta_layer["feat_" + str(i)] = {'mean_T' : nn.Linear(feat_y_dim + s_dim, 1, bias=False),
+                                                      'sigma_T' : nn.Linear(s_dim, 1, bias=False),
+                                                      'mean_C' : nn.Linear(feat_y_dim + s_dim, 1, bias=False),
+                                                      'sigma_C' : nn.Linear(s_dim, 1, bias=False)}
+
             elif feat['type'] in ['count']:
                 self.theta_layer["feat_" + str(i)] = nn.Linear(feat_y_dim + s_dim, feat_x_dim, bias=False)
 

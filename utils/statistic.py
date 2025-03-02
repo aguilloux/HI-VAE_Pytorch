@@ -389,8 +389,15 @@ def error_computation(x_train, x_hat, types_dict, miss_mask):
 
         # Shift error (Ordinal)
         elif feature_type == 'ordinal':
-            error_observed.append(torch.mean(torch.abs(x_train_observed - x_hat_observed)) / dim)
-            error_missing.append(torch.mean(torch.abs(x_train_missing - x_hat_missing)) / dim if torch.any(missing_mask) else 0)
+            error_observed.append(torch.mean(torch.abs(x_train_observed - x_hat_observed)) / int(feature['nclass']))
+            error_missing.append(torch.mean(torch.abs(x_train_missing - x_hat_missing)) / int(feature['nclass']) if torch.any(missing_mask) else 0)
+
+        # Normalized RMSE (Continuous)
+        elif feature_type == 'surv':
+            x_hat_observed_ = x_hat_observed[:, 0] * x_train_observed[:, 0] + x_hat_observed[:, 1] * (1 - x_train_observed[:, 0])
+            norm_term = torch.max(x_train_observed[:, 0]) - torch.min(x_train_observed[:, 0])
+            error_observed.append(torch.sqrt(F.mse_loss(x_train_observed[:, 0], x_hat_observed_)) / norm_term)
+            error_missing.append(torch.sqrt(F.mse_loss(x_train_missing, x_hat_missing)) / norm_term if torch.any(missing_mask) else 0)
 
         # Normalized RMSE (Continuous)
         else:
