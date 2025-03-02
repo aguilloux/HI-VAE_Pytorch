@@ -140,7 +140,7 @@ def loglik_real(batch_data, list_type, theta, normalization_params, n_generated_
 
     # Retrieve normalization parameters and ensure stability
     data_mean, data_var = normalization_params
-    data_var = torch.clamp(data_var, min=epsilon)
+    # data_var = torch.clamp(data_var, min=epsilon)
 
     # Retrieve predicted mean and variance, ensuring variance is positive
     est_mean, est_var = theta
@@ -151,8 +151,7 @@ def loglik_real(batch_data, list_type, theta, normalization_params, n_generated_
     est_var = data_var * est_var
 
     # Compute log-likelihood using the Gaussian log-likelihood formula
-    dim = int(list_type['dim'])
-    log_normalization = -0.5 * dim * torch.log(torch.tensor(2 * torch.pi))
+    log_normalization = -0.5 * torch.log(torch.tensor(2 * torch.pi))
     log_variance_term = -0.5 * torch.sum(torch.log(est_var), dim=1)
     log_exponent = -0.5 * torch.sum((data - est_mean) ** 2 / est_var, dim=1)
 
@@ -292,7 +291,7 @@ def loglik_pos(batch_data, list_type, theta, normalization_params, n_generated_s
 
     # Extract normalization parameters
     data_mean_log, data_var_log = normalization_params
-    data_var_log = torch.clamp(data_var_log, min=epsilon)
+    # data_var_log = torch.clamp(data_var_log, min=epsilon)
 
     # Extract data and mask
     data, missing_mask = batch_data
@@ -301,7 +300,7 @@ def loglik_pos(batch_data, list_type, theta, normalization_params, n_generated_s
 
     # Extract predicted parameters and ensure positivity
     est_mean, est_var = theta
-    est_var = torch.clamp(F.softplus(est_var), min=epsilon, max=1.0)
+    est_var = F.softplus(est_var).clamp(min=epsilon, max=1.0)
 
     # Affine transformation of the parameters
     est_mean = torch.sqrt(data_var_log) * est_mean + data_mean_log
@@ -312,11 +311,13 @@ def loglik_pos(batch_data, list_type, theta, normalization_params, n_generated_s
               - 0.5 * torch.sum(torch.log(2 * torch.pi * est_var), dim=1) \
               - torch.sum(data_log, dim=1)
 
+    max_threshold = max(data).item()
+    # max_threshold = 1e20
     return {
         "params": [est_mean, est_var],
         "log_p_x": log_p_x * missing_mask,
         "log_p_x_missing": log_p_x * (1.0 - missing_mask),
-        "samples": torch.clamp(torch.exp(Normal(est_mean, torch.sqrt(est_var)).sample(sample_shape=(n_generated_sample, ))) - 1.0, min=0, max=1e20)
+        "samples": torch.clamp(torch.exp(Normal(est_mean, torch.sqrt(est_var)).sample(sample_shape=(n_generated_sample, ))) - 1.0, min=0, max=max_threshold)
     }
 
 
@@ -357,7 +358,7 @@ def loglik_cat(batch_data, list_type, theta, normalization_params, n_generated_s
         "params": theta,
         "log_p_x": log_p_x * missing_mask,
         "log_p_x_missing": log_p_x * (1.0 - missing_mask),
-        "samples": F.one_hot(Categorical(logits=theta).sample(sample_shape=(n_generated_sample, )), num_classes=int(list_type["dim"]))
+        "samples": F.one_hot(Categorical(logits=theta).sample(sample_shape=(n_generated_sample, )), num_classes=int(list_type["nclass"]))
     }
 
 
