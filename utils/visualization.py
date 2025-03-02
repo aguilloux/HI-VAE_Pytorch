@@ -121,14 +121,20 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
 
         # Plot observed values
         ax_obs = axes[i, 0]
-        ax_obs.set_title(f"Feature {i+1}: {feature_type} (Observed)", fontsize=15, fontweight='bold')
+        if feature_type in ['surv']:
+            ax_obs.set_title(f"Feature {i+1}: {feature_type} (Survival time)", fontsize=15, fontweight='bold')
+        else:
+            ax_obs.set_title(f"Feature {i+1}: {feature_type} (Observed)", fontsize=15, fontweight='bold')
         ax_obs.set_xlabel("Sample Index")
         ax_obs.set_ylabel("Value")
         ax_obs.grid(True)
 
         # Plot missing values
         ax_miss = axes[i, 1]
-        ax_miss.set_title(f"Feature {i+1}: {feature_type} (Missing)", fontsize=15, fontweight='bold')
+        if feature_type in ['surv']:
+            ax_miss.set_title(f"Feature {i+1}: {feature_type} (Censoring time)", fontsize=15, fontweight='bold')
+        else:
+            ax_miss.set_title(f"Feature {i+1}: {feature_type} (Missing)", fontsize=15, fontweight='bold')
         ax_miss.set_xlabel("Sample Index")
         ax_miss.set_ylabel("Value")
         ax_miss.grid(True)
