@@ -1,0 +1,10 @@
+type,dim,nclass
+surv,2,
+count,1,
+pos,1,
+cat,1,2
+cat,1,2
+count,1,
+count,1,
+cat,1,3
+count,1,
