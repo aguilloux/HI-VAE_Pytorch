@@ -343,28 +343,29 @@ def loglik_surv_weibull(batch_data, list_type, theta, normalization_params, n_ge
         - `log_p_x_missing`: Log-likelihood of missing data.
         - `samples`: Sampled values from the estimated log-normal distribution.
     """
-    epsilon = 1e-6
+    epsilon_shape = 1e-2
+    epsilon_scale = 1e-2
 
     # Extract data and mask
     data, missing_mask = batch_data
     missing_mask = missing_mask.float()
 
     est_shape_T, est_scale_T, est_shape_C, est_scale_C = theta
-    est_shape_T = F.softplus(est_shape_T).clamp(min=epsilon)
-    est_scale_T = F.softplus(est_scale_T).clamp(min=epsilon)
-    est_shape_C = F.softplus(est_shape_C).clamp(min=epsilon)
-    est_scale_C = F.softplus(est_scale_C).clamp(min=epsilon)
+    est_shape_T = F.softplus(est_shape_T).clamp(min=epsilon_shape, max=1e2)
+    est_scale_T = F.softplus(est_scale_T).clamp(min=epsilon_scale, max=1e2)
+    est_shape_C = F.softplus(est_shape_C).clamp(min=epsilon_shape, max=1e2)
+    est_scale_C = F.softplus(est_scale_C).clamp(min=epsilon_scale, max=1e2)
     log_est_shape_T, log_est_scale_T, log_est_shape_C, log_est_scale_C = torch.log(est_shape_T), torch.log(est_scale_T), torch.log(est_shape_C), torch.log(est_scale_C)
     # Compute log-likelihood
     T_surv, delta = data[:, 0], data[:, 1]
-    log_p_x_T = delta * weibull.log_hazard(torch.cat([log_est_scale_T, log_est_shape_T], dim=1), T_surv, all_times=False) - weibull.cumulative_hazard(torch.cat([log_est_scale_T, log_est_shape_T], dim=1), T_surv, all_times=False)
-    log_p_x_C = (1 - delta) * weibull.log_hazard(torch.cat([log_est_scale_C, log_est_shape_C], dim=1), T_surv, all_times=False) - weibull.cumulative_hazard(torch.cat([log_est_scale_C, log_est_shape_C], dim=1), T_surv, all_times=False)
+    log_p_x_T = delta * weibull.log_hazard(torch.stack([log_est_scale_T, log_est_shape_T]).T, T_surv, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_T, log_est_shape_T]).T, T_surv, all_times=False)
+    log_p_x_C = (1 - delta) * weibull.log_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv, all_times=False)
 
     log_p_x = log_p_x_T + log_p_x_C
 
     sample_T, sample_C = [], []
     for _ in range(n_generated_sample):
-        U = torch.rand(1).clamp(1e-6, 1)  # Avoid log(0)
+        U = torch.rand(T_surv.shape[0]).clamp(1e-6, 1)  # Avoid log(0)
         T_sampled = est_scale_T * (-torch.log(U)) ** (1 / est_shape_T)
         C_sampled = est_scale_C * (-torch.log(U)) ** (1 / est_shape_C)
         sample_T.append(T_sampled)
@@ -379,7 +380,7 @@ def loglik_surv_weibull(batch_data, list_type, theta, normalization_params, n_ge
         "params": [est_shape_T, est_scale_T, est_shape_C, est_scale_C],
         "log_p_x": log_p_x * missing_mask,
         "log_p_x_missing": log_p_x * (1.0 - missing_mask),
-        "samples": torch.cat((sample_T, sample_C), dim=-1)
+        "samples": torch.stack([sample_T, sample_C], dim=-1)
     }
 
 def loglik_pos(batch_data, list_type, theta, normalization_params, n_generated_sample):

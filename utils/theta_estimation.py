@@ -212,7 +212,7 @@ def theta_surv_weibull(observed_y, missing_y, observed_s, missing_s, condition_i
         torch.cat([observed_y, observed_s], dim=1),
         torch.cat([missing_y, missing_s], dim=1),
         condition_indices,
-        layer=theta_layer["theta"]).unsqueeze(0).T
+        layer=theta_layer["theta"]).T
 
     return [h2_shape_T, h2_scale_T, h2_shape_C, h2_scale_C]
 
