@@ -148,7 +148,7 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
                 count_data += 1
             data_complete.append(count_data)
 
-        elif feature['type'] == 'surv':
+        elif feature['type'] in ['surv', 'surv_weibull']:
             # Survival data take two columns
             data_complete.append(data[:, feat_idx : feat_idx + 2])
             feat_idx += 1
@@ -318,6 +318,14 @@ def batch_normalization(batch_data_list, feat_types_list, miss_list):
             normalized_d[missing_mask] = 0
 
             normalization_parameters.append((data_mean_log, data_var_log))
+
+        elif feature_type == 'surv_weibull':
+            # Log transformation (No variance normalization)
+            normalized_d = torch.zeros_like(d)
+            normalized_d[~missing_mask][:, 0] = torch.log1p(observed_data[:, 0])  # Log-transform observed values
+            normalized_d[~missing_mask][:, 1] = observed_data[:, 1]
+            normalized_d[missing_mask] = 0  # Missing values set to 0
+            normalization_parameters.append((0.0, 1.0))
 
         else:
             # Keep categorical and ordinal values unchanged

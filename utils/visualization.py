@@ -54,7 +54,7 @@ def plot_data(data, feat_types_dict):
                 ax.set_xticks(reduced_ticks)  # Ensure same number of locations
                 ax.set_xticklabels([label.get_text() for label in reduced_labels])  # Set labels
 
-        elif feature_type in ["surv"]:
+        elif feature_type in ["surv", 'surv_weibull']:
             ax.set_title(f"Distribution plot of {feat_name} ({feature_type})", fontsize=16, fontweight="bold")
             kmf = KaplanMeierFitter()
             survival_time, censoring_indicator = data[:, feat_idx : feat_idx + 2].T
@@ -90,7 +90,7 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
     """
     num_feats = len(types_dict)
     for feat_type in types_dict:
-        if feat_type["type"] in ['surv']:
+        if feat_type["type"] in ['surv', 'surv_weibull']:
             num_feats += 1
 
     fig, axes = plt.subplots(num_feats, 2, figsize=(20, 4 * num_feats))
@@ -102,7 +102,7 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
     for i, feature in enumerate(types_dict):
         feature_type = feature['type']
 
-        if feature_type in ['surv']:
+        if feature_type in ['surv', 'surv_weibull']:
             # Extract observed and missing data
             true_observed = true_values[true_values[:, feat_idx + 1] == 1, feat_idx].cpu().numpy()
             true_missing = true_values[true_values[:, feat_idx + 1] == 0, feat_idx].cpu().numpy()
@@ -126,7 +126,7 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
         true_missing_subset, est_missing_subset = true_missing[miss_indices], est_missing[miss_indices]
 
         # Plot observed values
-        if feature_type in ['surv']:
+        if feature_type in ['surv', 'surv_weibull']:
             ax_obs = axes[feat_idx : feat_idx + 2, 0]
             ax_obs[0].set_title(f"Feature {i+1}: {feature_type} (Survival time)", fontsize=15, fontweight='bold')
             ax_obs[1].set_title(f"Feature {i+1}: {feature_type} (Kaplan–Meier Survival time)", fontsize=15, fontweight='bold')
@@ -143,7 +143,7 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
             ax_obs.grid(True)
 
         # Plot missing values
-        if feature_type in ['surv']:
+        if feature_type in ['surv', 'surv_weibull']:
             ax_miss = axes[feat_idx : feat_idx + 2, 1]
             ax_miss[0].set_title(f"Feature {i+1}: {feature_type} (Censoring time)", fontsize=15, fontweight='bold')
             ax_miss[1].set_title(f"Feature {i+1}: {feature_type} (Kaplan–Meier Censoring time)", fontsize=15, fontweight='bold')
@@ -159,7 +159,7 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
             ax_miss.grid(True)
 
 
-        if feature_type in ['surv']:  # Continuous & categorical data
+        if feature_type in ['surv', 'surv_weibull']:  # Continuous & categorical data
             ax_obs[0].scatter(range(num_obs_samples), true_observed_subset, label="True", marker='o', alpha=0.6)
             ax_obs[0].scatter(range(num_obs_samples), est_observed_subset, label="Estimation", marker='x', alpha=0.6)
             ax_obs[0].legend()
@@ -207,7 +207,7 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
             ax_obs.legend()
             ax_miss.legend()
 
-        if feature_type in ['surv']:
+        if feature_type in ['surv', 'surv_weibull']:
             feat_idx += 2
         else:
             feat_idx += 1
