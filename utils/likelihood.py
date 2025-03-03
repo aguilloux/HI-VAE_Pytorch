@@ -209,7 +209,7 @@ def loglik_surv(batch_data, list_type, theta, normalization_params, n_generated_
 
     # Extract observed data and mask
     data, missing_mask = batch_data
-    T_surv, delta = data[:, 0].unsqueeze(1), data[:, 1]
+    T_surv, delta = data[:, 0].unsqueeze(1), data[:, 1].unsqueeze(1)
     data_log = torch.log1p(T_surv)  # Log-transform survival times
     missing_mask = missing_mask.float()
 
@@ -225,20 +225,72 @@ def loglik_surv(batch_data, list_type, theta, normalization_params, n_generated_
     est_mean_C = sqrt_var_log * est_mean_C + data_mean_log
     est_var_C *= data_var_log
 
-    # Compute log-likelihood components
-    def log_normal_likelihood(data, mean, var):
-        return (-0.5 * (data - mean).pow(2) / var
-                - 0.5 * torch.log(2 * torch.pi * var)
-                - data)
+    
+    def log_hazard_normal(t, mu, sigma):
+        """
+        Computes the hazard function h(t) for a normal distribution.
 
-    log_p_x_T = log_normal_likelihood(data_log, est_mean_T, est_var_T).sum(dim=1)
-    log_p_x_C = log_normal_likelihood(data_log, est_mean_C, est_var_C).sum(dim=1)
+        Parameters:
+        - t (Tensor): Time values at which to compute the hazard function.
+        - mu (float or Tensor): Mean of the normal distribution.
+        - sigma (float or Tensor): Standard deviation of the normal distribution.
+
+        Returns:
+        - h_t (Tensor): Hazard function values at time `t`.
+        """
+        # Ensure sigma is positive to avoid numerical issues
+        sigma = torch.clamp(sigma, min=1e-5)
+
+        # Normal distribution
+        normal_dist = Normal(mu, sigma)
+
+        # Compute PDF f(t)
+        f_t = normal_dist.log_prob(t).exp()  # Equivalent to torch.exp(normal_dist.log_prob(t))
+
+        # Compute survival function S(t) = 1 - CDF(t)
+        S_t = 1 - normal_dist.cdf(t)
+
+        # Compute hazard function h(t) = f(t) / S(t)
+        h_t = f_t / torch.clamp(S_t, min=1e-10)  # Avoid division by zero
+
+        log_h_t = torch.log(torch.clamp(h_t, min=1e-10))
+
+        return log_h_t
+
+    def cumulative_hazard_normal(t, mu, sigma):
+        """
+        Computes the cumulative hazard function H(t) for a normal distribution.
+
+        Parameters:
+        - t (Tensor): Time values at which to compute the cumulative hazard.
+        - mu (float or Tensor): Mean of the normal distribution.
+        - sigma (float or Tensor): Standard deviation of the normal distribution.
+
+        Returns:
+        - H_t (Tensor): Cumulative hazard values at time `t`.
+        """
+        # Ensure sigma is positive to avoid numerical issues
+        sigma = torch.clamp(sigma, min=1e-5)
+
+        # Normal distribution
+        normal_dist = Normal(mu, sigma)
+
+        # Compute the survival function S(t) = 1 - CDF
+        S_t = 1 - normal_dist.cdf(t)
+
+        # Compute cumulative hazard: H(t) = -log(S(t))
+        H_t = -torch.log(torch.clamp(S_t, min=1e-10))  # Avoid log(0) issues
+
+        return H_t
+
+    log_p_x_T = delta * log_hazard_normal(data_log, est_mean_T, torch.sqrt(est_var_T)) - cumulative_hazard_normal(data_log, est_mean_T, torch.sqrt(est_var_T))
+    log_p_x_C = (1 - delta) * log_hazard_normal(data_log, est_mean_C, torch.sqrt(est_var_C)) - cumulative_hazard_normal(data_log, est_mean_C, torch.sqrt(est_var_C))
 
     # Compute overall log-likelihood based on censoring indicator
-    log_p_x = (log_p_x_T * delta + log_p_x_C * (1 - delta))
+    log_p_x = (log_p_x_T + log_p_x_C).sum(dim=1)
 
     # Generate samples from estimated log-normal distributions
-    max_threshold = T_surv.max().item()
+    max_threshold = 2 * T_surv.max().item()
     def sample_from_log_normal(mean, var):
         return torch.clamp(
             torch.exp(Normal(mean, torch.sqrt(var)).sample((n_generated_sample,))) - 1.0,
