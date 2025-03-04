@@ -166,8 +166,9 @@ def plot_true_vs_estimation(true_values, estimated_values, miss_mask, types_dict
 
             true_survival_time = true_values[:, feat_idx].cpu().numpy()
             true_censoring_indicator = true_values[:, feat_idx + 1].cpu().numpy()
-            est_survival_time = estimated_values[:, feat_idx].cpu().numpy()
-            est_censoring_indicator = (estimated_values[:, feat_idx] < estimated_values[:, feat_idx + 1]).cpu().numpy()
+            est_surv_time , est_cens_time = estimated_values[:, feat_idx : feat_idx + 2].cpu().numpy().T
+            est_survival_time = np.minimum(est_surv_time, est_cens_time)
+            est_censoring_indicator = est_surv_time < est_cens_time
 
             kmf = KaplanMeierFitter()
             kmf.fit(true_survival_time, true_censoring_indicator, label="True Survival time").plot(ax=ax_obs[1], c='r')
