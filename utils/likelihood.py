@@ -343,18 +343,21 @@ def loglik_surv_weibull(batch_data, list_type, theta, normalization_params, n_ge
         - `log_p_x_missing`: Log-likelihood of missing data.
         - `samples`: Sampled values from the estimated log-normal distribution.
     """
-    epsilon_shape = 1e-2
-    epsilon_scale = 1e-2
+    min_shape = 1e-1
+    min_scale = 1e-1
+    max_shape = 1e1
+    max_scale = 1e3
+
 
     # Extract data and mask
     data, missing_mask = batch_data
     missing_mask = missing_mask.float()
 
     est_shape_T, est_scale_T, est_shape_C, est_scale_C = theta
-    est_shape_T = F.softplus(est_shape_T).clamp(min=epsilon_shape, max=1e2)
-    est_scale_T = F.softplus(est_scale_T).clamp(min=epsilon_scale, max=1e2)
-    est_shape_C = F.softplus(est_shape_C).clamp(min=epsilon_shape, max=1e2)
-    est_scale_C = F.softplus(est_scale_C).clamp(min=epsilon_scale, max=1e2)
+    est_shape_T = F.softplus(est_shape_T).clamp(min=min_shape, max=max_shape)
+    est_scale_T = F.softplus(est_scale_T).clamp(min=min_scale, max=max_scale)
+    est_shape_C = F.softplus(est_shape_C).clamp(min=min_shape, max=max_shape)
+    est_scale_C = F.softplus(est_scale_C).clamp(min=min_scale, max=max_scale)
     log_est_shape_T, log_est_scale_T, log_est_shape_C, log_est_scale_C = torch.log(est_shape_T), torch.log(est_scale_T), torch.log(est_shape_C), torch.log(est_scale_C)
     # Compute log-likelihood
     T_surv, delta = data[:, 0], data[:, 1]
