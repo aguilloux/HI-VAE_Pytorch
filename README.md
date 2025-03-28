@@ -35,8 +35,8 @@ First,
 ```console
 $ pip install virtualenv
 $ cd HI-VAE
-$ virtualenv -p python3 _venv
-$ source _venv/bin/activate
+$ conda create --name hivae
+$ conda activate hivae
 $ pip install -r pip_requirements.txt
 $ chmod +x script_HIVAE.sh
 ```
