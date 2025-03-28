@@ -343,9 +343,9 @@ def loglik_surv_weibull(batch_data, list_type, theta, normalization_params, n_ge
         - `log_p_x_missing`: Log-likelihood of missing data.
         - `samples`: Sampled values from the estimated log-normal distribution.
     """
-    min_shape = 1e-1
-    min_scale = 1e-1
-    max_shape = 1e1
+    min_shape = 1e-3
+    min_scale = 1e-3
+    max_shape = 1e3
     max_scale = 1e3
 
 
@@ -353,30 +353,40 @@ def loglik_surv_weibull(batch_data, list_type, theta, normalization_params, n_ge
     data, missing_mask = batch_data
     missing_mask = missing_mask.float()
 
+    # Extract normalization parameters
+    data_min, data_max = normalization_params
+
+
     est_shape_T, est_scale_T, est_shape_C, est_scale_C = theta
     est_shape_T = F.softplus(est_shape_T).clamp(min=min_shape, max=max_shape)
     est_scale_T = F.softplus(est_scale_T).clamp(min=min_scale, max=max_scale)
     est_shape_C = F.softplus(est_shape_C).clamp(min=min_shape, max=max_shape)
     est_scale_C = F.softplus(est_scale_C).clamp(min=min_scale, max=max_scale)
     log_est_shape_T, log_est_scale_T, log_est_shape_C, log_est_scale_C = torch.log(est_shape_T), torch.log(est_scale_T), torch.log(est_shape_C), torch.log(est_scale_C)
+    #log_est_scale_T = log_est_scale_T *  (data_max - data_min)
+    #log_est_scale_C = log_est_scale_C *  (data_max - data_min)
+
+
     # Compute log-likelihood
     T_surv, delta = data[:, 0], data[:, 1]
-    log_p_x_T = delta * weibull.log_hazard(torch.stack([log_est_scale_T, log_est_shape_T]).T, T_surv, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_T, log_est_shape_T]).T, T_surv, all_times=False)
-    log_p_x_C = (1 - delta) * weibull.log_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv, all_times=False)
+    T_surv_scaled = 1.0  * (T_surv - data_min) / (data_max - data_min)
+    log_p_x_T = delta * weibull.log_hazard(torch.stack([log_est_scale_T, log_est_shape_T]).T, T_surv_scaled, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_T, log_est_shape_T]).T, T_surv_scaled, all_times=False)
+    log_p_x_C = (1 - delta) * weibull.log_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False)
 
     log_p_x = log_p_x_T + log_p_x_C
 
     sample_T, sample_C = [], []
     for _ in range(n_generated_sample):
         U = torch.rand(T_surv.shape[0]).clamp(1e-6, 1)  # Avoid log(0)
-        T_sampled = est_scale_T * (-torch.log(U)) ** (1 / est_shape_T)
-        C_sampled = est_scale_C * (-torch.log(U)) ** (1 / est_shape_C)
+        V = torch.rand(T_surv.shape[0]).clamp(1e-6, 1)  # Avoid log(0)
+        T_sampled = est_scale_T * (-torch.log(U)) ** (1 / est_shape_T) * (data_max - data_min) / 1.0  + data_min
+        C_sampled = est_scale_C * (-torch.log(V)) ** (1 / est_shape_C) * (data_max - data_min) / 1.0  + data_min
         sample_T.append(T_sampled)
         sample_C.append(C_sampled)
 
-    max_threshold = 2 * max(T_surv).item()
+    max_threshold =  max(T_surv).item()
     # max_threshold = 1e20
-    sample_T = torch.stack(sample_T, dim=0).clamp(0, max_threshold)
+    sample_T = torch.stack(sample_T, dim=0)#.clamp(0, max_threshold)
     sample_C = torch.stack(sample_C, dim=0).clamp(0, max_threshold)
 
     return {
@@ -442,13 +452,14 @@ def loglik_pos(batch_data, list_type, theta, normalization_params, n_generated_s
               - 0.5 * torch.sum(torch.log(2 * torch.pi * est_var), dim=1) \
               - torch.sum(data_log, dim=1)
 
-    max_threshold = max(data).item()
+    max_threshold = 2. * max(data).item()
     # max_threshold = 1e20
     return {
         "params": [est_mean, est_var],
         "log_p_x": log_p_x * missing_mask,
         "log_p_x_missing": log_p_x * (1.0 - missing_mask),
-        "samples": torch.clamp(torch.exp(Normal(est_mean, torch.sqrt(est_var)).sample(sample_shape=(n_generated_sample, ))) - 1.0, min=0, max=max_threshold)
+        "samples": torch.clamp(torch.exp(Normal(est_mean, torch.sqrt(est_var)).sample(sample_shape=(n_generated_sample, ))) , min=0, max=max_threshold)
+        #"samples": torch.clamp(torch.exp(Normal(est_mean, torch.sqrt(est_var)).sample(sample_shape=(n_generated_sample, ))) - 1.0, min=0, max=max_threshold)
     }
 
 
