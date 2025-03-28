@@ -22,11 +22,10 @@ You can add your own datasets as long as they follow this structure.
 
 ## Files description
 
-* **script_HIVAE.sh**: A script with a simple example on how to run the models.
 * **src.py**: Contains the HI-VAE models (factorized encoder or input dropout encoder).
 * **utils**: This folder contains different scripts to support load data, compute likelihood, compute error.
-* **experiments.py**: Contains the experiments for the HIVAE models.
-* **tutorial.ipynb**: Tutorial notebook.
+* **preprocessing __ .ipynb**: Data reprocessing notebooks.
+* **tutorial __ .ipynb**: Tutorial notebooks.
 
 
 # Code Pre-requisites
@@ -41,7 +40,5 @@ $ pip install -r pip_requirements.txt
 $ chmod +x script_HIVAE.sh
 ```
 
-Then, run
-```console
-$ ./script_HIVAE.sh
-```
+Then, run preprocessing and tutorial of your data.
+
