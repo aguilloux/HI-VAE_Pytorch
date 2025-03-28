@@ -13,7 +13,8 @@ There are three different datasets considered in the experiments (Wine, Adult an
 
 * **data.csv**: the dataset
 * **data_types.csv**: a csv containing the types of that particular dataset. Every line is a different attribute containing three paramenters:
-	* type: real, pos (positive), cat (categorical), ord (ordinal), count
+  	* name: real, pos (positive), cat (categorical), ord (ordinal), count, surv (log-normal) or surv_weibul (Weibull)
+   	* type: real, pos (positive), cat (categorical), ord (ordinal), count
 	* dim: dimension of the variable in the original dataset
 	* nclass: number of categories (for cat and ord)
 * **Missingxx_y.csv**: a csv containing the positions of the different missing values in the data. Each "y" mask was generated randomly, containing a "xx" % of missing values. This file may be left blank if no missing values need to be specified.
