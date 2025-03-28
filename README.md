@@ -24,7 +24,7 @@ You can add your own datasets as long as they follow this structure.
 
 * **src.py**: Contains the HI-VAE models (factorized encoder or input dropout encoder).
 * **utils**: This folder contains different scripts to support load data, compute likelihood, compute error.
-* **preprocessing __ .ipynb**: Data reprocessing notebooks.
+* **data_preprocessing __ .ipynb**: Data reprocessing notebooks.
 * **tutorial __ .ipynb**: Tutorial notebooks.
 
 
