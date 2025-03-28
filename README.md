@@ -1,5 +1,6 @@
 # HI-VAE
 
+toto
 This repository contains the implementation of our Heterogeneous Incomplete Variational Autoendoder model (HI-VAE). It has been written in Python, using PyTorch.
 
 The details of this model are included in this [paper](https://arxiv.org/abs/1807.03653). Please cite it if you use this code for your own research.
