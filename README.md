@@ -32,7 +32,6 @@ You can add your own datasets as long as they follow this structure.
 
 First,
 ```console
-$ pip install virtualenv
 $ cd HI-VAE
 $ conda create --name hivae
 $ conda activate hivae
