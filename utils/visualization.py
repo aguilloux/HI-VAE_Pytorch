@@ -188,12 +188,17 @@ def plot_compare_data(data, feat_types_dict,feat_comparison_name):
                 kmf = KaplanMeierFitter()
 
                 survival_time, censoring_indicator,treat  =  data[:, list(range((feat_idx+1), (feat_idx+1)+2)) + [feat_comparison_index]].T
-                kmf.fit(survival_time[treat==0], 1 - censoring_indicator[treat==0], label="Cens. time (treat=0)").plot( c='c')
-                kmf.fit(survival_time[treat==1], 1 - censoring_indicator[treat==1], label="Cens. time (treat=10").plot( c='m')
+                label_cens_0 = "Cens. time(" + feat_comparison_name + "=0)"
+                label_cens_1 = "Cens. time(" + feat_comparison_name + "=1)"
+                label_time_0 = "Surv. time(" + feat_comparison_name + "=0)"
+                label_time_1 = "Surv. time(" + feat_comparison_name + "=1)"
 
-                kmf.fit(survival_time[treat==1], censoring_indicator[treat==1], label="Surv, time (treat=1)").plot( c='r')
+                kmf.fit(survival_time[treat==0], 1 - censoring_indicator[treat==0], label=label_cens_0).plot( c='c')
+                kmf.fit(survival_time[treat==1], 1 - censoring_indicator[treat==1], label=label_cens_1).plot( c='m')
+
+                kmf.fit(survival_time[treat==1], censoring_indicator[treat==1], label=label_time_1).plot( c='r')
                 
-                kmf.fit(survival_time[treat==0], censoring_indicator[treat==0], label="Surv, time (treat=0)").plot( c='b')
+                kmf.fit(survival_time[treat==0], censoring_indicator[treat==0], label=label_time_0).plot( c='b')
                 
 
    
