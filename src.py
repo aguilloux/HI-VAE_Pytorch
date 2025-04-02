@@ -63,7 +63,7 @@ class HIVAE(nn.Module):
                                                       'sigma_T' : nn.Linear(s_dim, 1, bias=False),
                                                       'mean_C' : nn.Linear(feat_y_dim + s_dim, 1, bias=False),
                                                       'sigma_C' : nn.Linear(s_dim, 1, bias=False)}
-            elif feat['type'] in ['surv_weibull']:
+            elif feat['type'] in ['surv_weibull','surv_loglog']:
                 self.theta_layer["feat_" + str(i)] = {'theta' : nn.Linear(feat_y_dim + s_dim, 4, bias=False)}
 
             elif feat['type'] in ['count']:

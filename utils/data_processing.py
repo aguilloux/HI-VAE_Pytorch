@@ -13,6 +13,7 @@ import os
 import csv
 import numpy as np
 import torch
+import pandas as pd
 
 
 def get_args(argv = None):
@@ -116,6 +117,7 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
     
     feat_idx = 0
     for i, feature in enumerate(types_dict):
+
         if feature['type'] == 'cat':
             # One-hot encoding for categorical data
             cat_data = data[:, feat_idx].to(torch.int64)
@@ -148,7 +150,7 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
                 count_data += 1
             data_complete.append(count_data)
 
-        elif feature['type'] in ['surv', 'surv_weibull']:
+        elif feature['type'] in ['surv', 'surv_weibull', 'surv_loglog']:
             # Survival data take two columns
             data_complete.append(data[:, feat_idx : feat_idx + 2])
             feat_idx += 1
@@ -319,7 +321,7 @@ def batch_normalization(batch_data_list, feat_types_list, miss_list):
 
             normalization_parameters.append((data_mean_log, data_var_log))
 
-        elif feature_type == 'surv_weibull':
+        elif feature_type in ('surv_weibull','surv_loglog'):
             # # Log transformation (No variance normalization)
             # normalized_d = torch.zeros_like(d)
             # normalized_d[~missing_mask][:, 0] = torch.log1p(observed_data[:, 0])  # Log-transform observed values
@@ -333,10 +335,11 @@ def batch_normalization(batch_data_list, feat_types_list, miss_list):
             normalization_parameters.append((data_min, data_max))
             
             
-            normalized_observed = 1. * (observed_data - data_min) / (data_max - data_min)
+            normalized_observed =  (observed_data - data_min) / (data_max - data_min)
             normalized_d = torch.zeros_like(d)
             normalized_d[~missing_mask] = normalized_observed  # Assign transformed values
             normalized_d[missing_mask] = 0  # Missing values set to 0
+
 
         else:
             # Keep categorical and ordinal values unchanged
@@ -434,7 +437,7 @@ def survival_variables_transformation(data, types_dict):
 
     feat_idx = 0
     for d in types_dict:
-        if d['type'] in ['surv','surv_weibull']:
+        if d['type'] in ['surv','surv_weibull','surv_loglog']:
             subset = output[:, feat_idx : feat_idx + 2]
             time_cens = (torch.min(subset, dim=1, keepdim=True))
             output[:, feat_idx ] = time_cens.values.squeeze(1)
@@ -445,3 +448,13 @@ def survival_variables_transformation(data, types_dict):
     
     return output
 
+def encode_and_bind(original_dataframe, feature_to_encode):
+    #print(np.unique(original_dataframe[feature_to_encode]))#.shape[0])
+    if np.unique(original_dataframe[feature_to_encode]).shape[0] > 2 :
+        dummies = pd.get_dummies(original_dataframe[feature_to_encode],drop_first=True, prefix=feature_to_encode, prefix_sep='')
+        res = pd.concat([original_dataframe, dummies], axis=1)
+        #print(res.head())
+        res = res.drop([feature_to_encode], axis=1)
+    else:
+        res = original_dataframe
+    return(res) 

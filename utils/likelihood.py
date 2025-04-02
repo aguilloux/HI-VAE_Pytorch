@@ -69,7 +69,8 @@ def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normal
         "cat": loglik_cat,
         "ordinal": loglik_ordinal,
         "surv": loglik_surv,
-        "surv_weibull": loglik_surv_weibull
+        "surv_weibull": loglik_surv_weibull,
+        "surv_loglog": loglik_surv_loglog
     }
 
     # Compute log-likelihood for each feature type
@@ -325,12 +326,10 @@ def loglik_surv_weibull(batch_data, list_type, theta, normalization_params, n_ge
         Dictionary specifying feature type and dimension.
 
     theta : tuple of (torch.Tensor, torch.Tensor)
-        - `est_mean`: Predicted log-mean.
-        - `est_var`: Predicted log-variance.
+        - est_shape_T, est_scale_T, est_shape_C, est_scale_C
 
     normalization_params : tuple of (torch.Tensor, torch.Tensor)
-        - `data_mean_log`: Log mean of the dataset.
-        - `data_var_log`: Log variance of the dataset.
+        - data_min, data_max
 
     n_generated_sample : int
         Number of samples to be generated per an input data point
@@ -369,7 +368,7 @@ def loglik_surv_weibull(batch_data, list_type, theta, normalization_params, n_ge
 
     # Compute log-likelihood
     T_surv, delta = data[:, 0], data[:, 1]
-    T_surv_scaled = 1.0  * (T_surv - data_min) / (data_max - data_min)
+    T_surv_scaled = (T_surv - data_min) / (data_max - data_min)
     log_p_x_T = delta * weibull.log_hazard(torch.stack([log_est_scale_T, log_est_shape_T]).T, T_surv_scaled, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_T, log_est_shape_T]).T, T_surv_scaled, all_times=False)
     log_p_x_C = (1 - delta) * weibull.log_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False)
 
@@ -395,6 +394,170 @@ def loglik_surv_weibull(batch_data, list_type, theta, normalization_params, n_ge
         "log_p_x_missing": log_p_x * (1.0 - missing_mask),
         "samples": torch.stack([sample_T, sample_C], dim=-1)
     }
+
+def loglik_surv_loglog(batch_data, list_type, theta, normalization_params, n_generated_sample):
+    """
+    Computes the log-likelihood for positive real-valued data using a log logistic distribution for the times and weibull distribution for the
+    censoring times.
+
+    Parameters:
+    -----------
+    batch_data : tuple of (torch.Tensor, torch.Tensor)
+        - `data`: Observed positive real-valued data.
+        - `missing_mask`: Binary mask (1 = observed, 0 = missing).
+
+    list_type : dict
+        Dictionary specifying feature type and dimension.
+
+    theta : tuple of (torch.Tensor, torch.Tensor)
+        - est_shape_T, est_scale_T, est_shape_C, est_scale_C
+
+    normalization_params : tuple of (torch.Tensor, torch.Tensor)
+        - data_min, data_max
+
+    n_generated_sample : int
+        Number of samples to be generated per an input data point
+
+    Returns:
+    --------
+    output : dict
+        - `params`: Estimated mean and variance.
+        - `log_p_x`: Log-likelihood of observed data.
+        - `log_p_x_missing`: Log-likelihood of missing data.
+        - `samples`: Sampled values from the estimated log-normal distribution.
+    """
+    min_shape = 1e-3
+    min_scale = 1e-3
+    max_shape = 1e3
+    max_scale = 1e3
+
+
+    # Extract data and mask
+    data, missing_mask = batch_data
+    missing_mask = missing_mask.float()
+
+    # Extract normalization parameters
+    data_min, data_max = normalization_params
+
+
+    est_shapem1_T, est_scale_T, est_shape_C, est_scale_C = theta
+    est_shapem1_T = F.softplus(est_shapem1_T).clamp(min=min_shape, max=max_shape)
+    est_scale_T = F.softplus(est_scale_T).clamp(min=min_scale, max=max_scale)
+    est_shape_C = F.softplus(est_shape_C).clamp(min=min_shape, max=max_shape)
+    est_scale_C = F.softplus(est_scale_C).clamp(min=min_scale, max=max_scale)
+    #log_est_shape_T, log_est_scale_T, log_est_shape_C, log_est_scale_C = torch.log(est_shape_T), torch.log(est_scale_T), torch.log(est_shape_C), torch.log(est_scale_C)
+    
+
+
+    # get and scale the data
+    T_surv, delta = data[:, 0], data[:, 1]
+    T_surv_scaled = (T_surv - data_min) / (data_max - data_min)
+
+    def log_hazard_loglog(t, scale, shapem1):
+        """
+        Computes the log hazard function h(t) for a loglogistic distribution.
+
+        Parameters:
+        - t (Tensor): Time values at which to compute the hazard function.
+        - scale (float or Tensor): scale parameter aka alpha
+        - shape (float or Tensor): shape parameter aka beta
+
+        Returns:
+        - log_h_t (Tensor): log Hazard function values at time `t`.
+        """
+        # Ensure parameters are positive to avoid numerical issues
+        scale = torch.clamp(scale, min=1e-5)
+        shape = torch.clamp(shapem1, min=1e-5) + 1.
+
+        # Compute hazard function h(t) 
+        h_t = (shape/scale) * (t/scale) ** (shape-1)   / (1 + (t/scale) ** shape)  # Avoid division by zero
+
+        log_h_t = torch.log(torch.clamp(h_t, min=1e-10))
+
+        return log_h_t
+
+    def cumulative_hazard_loglog(t, scale, shapem1):
+        """
+        Computes the cumulative hazard function H(t) for a loglogistic distribution.
+
+        Parameters:
+        - t (Tensor): Time values at which to compute the cumulative hazard.
+        - scale (float or Tensor): scale parameter aka alpha
+        - shape (float or Tensor): shape parameter aka beta
+
+        Returns:
+        - H_t (Tensor): Cumulative hazard values at time `t`.
+        """
+        # Ensure sigma is positive to avoid numerical issues
+        scale = torch.clamp(scale, min=1e-5)
+        shape = torch.clamp(shapem1, min=1e-5) + 1.
+
+        
+        # Compute cumulative hazard: H(t) = -log(S(t))
+        H_t = torch.log((1 + (t/scale) ** shape))  # Avoid log(0) issues
+
+        return H_t
+
+    def cdf_inv(u, scale, shapem1):
+        """
+        Computes the cumulative hazard function H(t) for a loglogistic distribution.
+
+        Parameters:
+        - t (Tensor): Time values at which to compute the cumulative hazard.
+        - scale (float or Tensor): scale parameter aka alpha
+        - shape (float or Tensor): shape parameter aka beta
+
+        Returns:
+        - H_t (Tensor): Cumulative hazard values at time `t`.
+        """
+        # Ensure sigma is positive to avoid numerical issues
+        scale = torch.clamp(scale, min=1e-5)
+        shape = torch.clamp(shapem1, min=1e-5) + 1.
+
+
+        # Compute cumulative hazard: H(t) = -log(S(t))
+        Finv_u = scale * ((1-u)/u) ** (1 /shape) 
+
+        return Finv_u
+
+    # Compute log-likelihood
+    log_est_shape_C, log_est_scale_C = torch.log(est_shape_C), torch.log(est_scale_C)
+    
+
+    # Compute log-likelihood
+
+    log_p_x_T = delta * log_hazard_loglog(T_surv_scaled, est_scale_T, est_shapem1_T) - cumulative_hazard_loglog(T_surv_scaled, est_scale_T, est_shapem1_T)
+    log_p_x_C = (1 - delta) * weibull.log_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False)
+    log_p_x = log_p_x_T + log_p_x_C
+
+    # generate
+    sample_T, sample_C = [], []
+    for _ in range(n_generated_sample):
+        
+        U = torch.rand(T_surv.shape[0]).clamp(1e-6, 1)  
+        V = torch.rand(T_surv.shape[0]).clamp(1e-6, 1)  
+        
+        T_sampled_scaled = cdf_inv(U,est_scale_T,est_shapem1_T)  
+        C_sampled_scaled = est_scale_C * (-torch.log(V)) ** (1 / est_shape_C)
+        T_sampled = T_sampled_scaled * (data_max - data_min)   + data_min 
+        C_sampled = C_sampled_scaled * (data_max - data_min)   + data_min
+        
+
+        sample_T.append(T_sampled)
+        sample_C.append(C_sampled)
+
+    max_threshold =  max(T_surv).item()
+    # max_threshold = 1e20
+    sample_T = torch.stack(sample_T, dim=0)#.clamp(0, max_threshold)
+    sample_C = torch.stack(sample_C, dim=0).clamp(0, max_threshold)
+
+    return {
+        "params": [est_shapem1_T, est_scale_T, est_shape_C, est_scale_C],
+        "log_p_x": log_p_x * missing_mask,
+        "log_p_x_missing": log_p_x * (1.0 - missing_mask),
+        "samples": torch.stack([sample_T, sample_C], dim=-1)
+    }    
+
 
 def loglik_pos(batch_data, list_type, theta, normalization_params, n_generated_sample):
     """

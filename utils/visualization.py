@@ -16,7 +16,7 @@ import seaborn as sns
 import torch
 sns.set(style="whitegrid", font="STIXGeneral", context="talk", palette="colorblind")
 
-from lifelines import KaplanMeierFitter
+from sksurv.nonparametric import kaplan_meier_estimator
 
 def plot_data(data, feat_types_dict):
     """
@@ -35,6 +35,7 @@ def plot_data(data, feat_types_dict):
         feature_type = feature['type']
         #feat_name = "feat_"+ str(i+1)
         feat_name = feature['name']
+        print(feat_name)
 
         ax= axes[i // 2, i % 2]
         if feature_type in ['cat', 'ordinal']:  # Count, ordinal & categorical data
@@ -56,12 +57,20 @@ def plot_data(data, feat_types_dict):
                 ax.set_xticks(reduced_ticks)  # Ensure same number of locations
                 ax.set_xticklabels([label.get_text() for label in reduced_labels])  # Set labels
 
-        elif feature_type in ["surv", 'surv_weibull']:
+        elif feature_type in ["surv", 'surv_weibull', 'surv_loglog']:
             ax.set_title(f"Distribution plot of {feat_name} ({feature_type})", fontsize=16, fontweight="bold")
-            kmf = KaplanMeierFitter()
+            # kmf = KaplanMeierFitter()
+            # survival_time, censoring_indicator = data[:, feat_idx : feat_idx + 2].T
+            # kmf.fit(survival_time, censoring_indicator, label="Survival time").plot(ax=ax, c='r')
+            # kmf.fit(survival_time, 1 - censoring_indicator, label="Censoring time").plot(ax=ax, c='b')
+            
             survival_time, censoring_indicator = data[:, feat_idx : feat_idx + 2].T
-            kmf.fit(survival_time, censoring_indicator, label="Survival time").plot(ax=ax, c='r')
-            kmf.fit(survival_time, 1 - censoring_indicator, label="Censoring time").plot(ax=ax, c='b')
+            time, survival_prob, conf_int = kaplan_meier_estimator(censoring_indicator==1, survival_time, conf_type="log-log")
+
+            ax.step(time, survival_prob, where="post")
+          #  ax.fill_between(time, conf_int[0], conf_int[1], alpha=0.25, step="post")
+        
+
             ax.legend().set_visible(True)
             feat_idx += 1
 
@@ -127,17 +136,45 @@ def plot_compare_data(data, feat_types_dict,feat_comparison_name):
                     ax.set_xticks(reduced_ticks)  # Ensure same number of locations
                     ax.set_xticklabels([label.get_text() for label in reduced_labels])  # Set labels
 
-            elif feature_type in ["surv", 'surv_weibull']:
+            elif feature_type in ["surv", 'surv_weibull', 'surv_loglog']:
                 
-                kmf = KaplanMeierFitter()
-                survival_time, censoring_indicator , treat  =  data[:, list(range(feat_idx, feat_idx+2)) + [feat_comparison_index]].T
-                kmf.fit(survival_time[treat==1], censoring_indicator[treat==1], label="Surv, time (treat=1)").plot( c='r')
-                kmf.fit(survival_time[treat==1], 1 - censoring_indicator[treat==1], label="Cens. time (treat=10").plot( c='m')
-                kmf.fit(survival_time[treat==0], censoring_indicator[treat==0], label="Surv, time (treat=0)").plot( c='b')
-                kmf.fit(survival_time[treat==0], 1 - censoring_indicator[treat==0], label="Cens. time (treat=0)").plot( c='c')
-                ax.set_title(f"Distribution plot of {feat_name} ({feature_type})", fontsize=16, fontweight="bold")
+                survival_time, censoring_indicator,treat  =  data[:, list(range((feat_idx), (feat_idx)+2)) + [feat_comparison_index]].T
+        
+                time_S1, survival_prob_S1, conf_int = kaplan_meier_estimator((censoring_indicator[treat==1]==1), survival_time[treat==1], conf_type="log-log")
+                time_C1, survival_prob_C1, conf_int = kaplan_meier_estimator((1-censoring_indicator[treat==1]==1), survival_time[treat==1], conf_type="log-log")
+                time_S0, survival_prob_S0, conf_int = kaplan_meier_estimator((censoring_indicator[treat==0]==1), survival_time[treat==0], conf_type="log-log")
+                time_C0, survival_prob_C0, conf_int = kaplan_meier_estimator((1-censoring_indicator[treat==0]==1), survival_time[treat==0], conf_type="log-log")
+                
+
+                label_cens_0 = "Cens. time(" + feat_comparison_name + "=0)"
+                label_cens_1 = "Cens. time(" + feat_comparison_name + "=1)"
+                label_time_0 = "Surv. time(" + feat_comparison_name + "=0)"
+                label_time_1 = "Surv. time(" + feat_comparison_name + "=1)"
+
+                ax.step(time_S1, survival_prob_S1, where="post",label = label_time_1,c='r')
+                ax.step(time_C1, survival_prob_C1, where="post",label = label_cens_1,c='b')
+                
+                ax.step(time_S0, survival_prob_S0, where="post",label = label_time_0,c='m')
+                ax.step(time_C0, survival_prob_C0, where="post",label = label_cens_0,c='c')
+                
+                #ax.ylim(0, 1)
+
                 ax.legend().set_visible(True)
+
+
+
+                # kmf = KaplanMeierFitter()
                 
+
+                # kmf.fit(survival_time[treat==0], 1 - censoring_indicator[treat==0], label=label_cens_0).plot( c='c')
+                # kmf.fit(survival_time[treat==1], 1 - censoring_indicator[treat==1], label=label_cens_1).plot( c='m')
+
+                # kmf.fit(survival_time[treat==1], censoring_indicator[treat==1], label=label_time_1).plot( c='r')
+                
+                # kmf.fit(survival_time[treat==0], censoring_indicator[treat==0], label=label_time_0).plot( c='b'
+
+
+
                 feat_idx += 1
 
             else:
@@ -183,25 +220,27 @@ def plot_compare_data(data, feat_types_dict,feat_comparison_name):
                     ax.set_xticks(reduced_ticks)  # Ensure same number of locations
                     ax.set_xticklabels([label.get_text() for label in reduced_labels])  # Set labels
 
-            elif feature_type in ["surv", 'surv_weibull']:
+            elif feature_type in ["surv", 'surv_weibull','surv_loglog']:
                 
-                kmf = KaplanMeierFitter()
-
                 survival_time, censoring_indicator,treat  =  data[:, list(range((feat_idx+1), (feat_idx+1)+2)) + [feat_comparison_index]].T
+                
+                time_S1, survival_prob_S1, conf_int = kaplan_meier_estimator((censoring_indicator[treat==1]==1), survival_time[treat==1], conf_type="log-log")
+                time_C1, survival_prob_C1, conf_int = kaplan_meier_estimator((1-censoring_indicator[treat==1]==1), survival_time[treat==1], conf_type="log-log")
+                time_S0, survival_prob_S0, conf_int = kaplan_meier_estimator((censoring_indicator[treat==0]==1), survival_time[treat==0], conf_type="log-log")
+                time_C0, survival_prob_C0, conf_int = kaplan_meier_estimator((1-censoring_indicator[treat==0]==1), survival_time[treat==0], conf_type="log-log")
+                
+
                 label_cens_0 = "Cens. time(" + feat_comparison_name + "=0)"
                 label_cens_1 = "Cens. time(" + feat_comparison_name + "=1)"
                 label_time_0 = "Surv. time(" + feat_comparison_name + "=0)"
                 label_time_1 = "Surv. time(" + feat_comparison_name + "=1)"
 
-                kmf.fit(survival_time[treat==0], 1 - censoring_indicator[treat==0], label=label_cens_0).plot( c='c')
-                kmf.fit(survival_time[treat==1], 1 - censoring_indicator[treat==1], label=label_cens_1).plot( c='m')
-
-                kmf.fit(survival_time[treat==1], censoring_indicator[treat==1], label=label_time_1).plot( c='r')
+                ax.step(time_S1, survival_prob_S1, where="post",label = label_time_1,c='r')
+                ax.step(time_C1, survival_prob_C1, where="post",label = label_cens_1,c='m')
                 
-                kmf.fit(survival_time[treat==0], censoring_indicator[treat==0], label=label_time_0).plot( c='b')
+                ax.step(time_S0, survival_prob_S0, where="post",label = label_time_0,c='b')
+                ax.step(time_C0, survival_prob_C0, where="post",label = label_cens_0,c='c')
                 
-
-   
                 ax.legend().set_visible(True)
                 ax.set_title(f"Distribution plot of {feat_name} ({feature_type})", fontsize=16, fontweight="bold")
                 feat_idx += 1
