@@ -57,7 +57,7 @@ setuptools==75.8.0
 six==1.17.0
 stack-data==0.6.3
 sympy==1.13.1
-tableone=0.9.1
+tableone==0.9.1
 threadpoolctl==3.5.0
 torch==2.6.0
 torchmetrics==1.6.1
