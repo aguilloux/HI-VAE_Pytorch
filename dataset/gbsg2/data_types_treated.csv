@@ -2,7 +2,6 @@ name,type,dim,nclass
 survcens,surv_weibull,2,
 age,real,1,
 estrec,pos,1,
-horTh,cat,1,2
 menostat,cat,1,2
 pnodes,pos,1,
 progrec,pos,1,
