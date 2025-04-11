@@ -42,3 +42,14 @@ $ chmod +x script_HIVAE.sh
 
 Then, run preprocessing and tutorial of your data.
 
+
+To have an environment compatible with Synthcity,
+
+```console
+$ cd HI-VAE
+$ conda create --name env_synthcity
+$ conda activate env_synthcity
+$ pip install synthcity
+$ pip install -r pip_requirements_synthcity.txt
+```
+
