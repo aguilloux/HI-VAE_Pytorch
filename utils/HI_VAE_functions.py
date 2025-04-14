@@ -12,18 +12,24 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Normal, Categorical, Poisson
 from torchsurv.loss import weibull
-from utils import data_processing, visualization, statistic, src, likelihood, theta_estimation, src
+
+import utils.data_processing
+import utils.visualization
+import utils.statistic
+
+import utils.src
+import utils.likelihood
+import utils.theta_estimation
+
+
 import importlib
 import os 
 
-
-import torch
 import torch.optim as optim
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import data_processing, visualization, statistic, HI_VAE_functions
-import time
+
 import pandas as pd
 import warnings
 from lifelines import CoxPHFitter
@@ -39,7 +45,7 @@ from sksurv.util import Surv
 
 
 
-def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,dataset_name, m_perc, mask,  train_test_share = .9, batch_size = 100, n_generated_sample = 10,model_name="HIVAE_inputDropout", dim_latent_z = 20, dim_latent_y = 15, dim_latent_s = 20, epochs = 1000, lr = 1e-3):
+def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,feat_types_dict,dataset_name, m_perc, mask,  train_test_share = .9, batch_size = 100, n_generated_sample = 10,model_name="HIVAE_inputDropout", dim_latent_z = 20, dim_latent_y = 15, dim_latent_s = 20, epochs = 1000, lr = 1e-3):
     """
     # Train-test split, definition and optimization of the model on control
 
@@ -143,7 +149,7 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,dataset_name, 
     network_file = os.path.join(save_dir, f'{save_file}.pth')
     
     # Create PyTorch HVAE model
-    model_loading = getattr(importlib.import_module("src"), model_name)
+    model_loading = getattr(importlib.import_module("utils.src"), model_name)
     vae_model = model_loading(input_dim=data_train.shape[1], 
                               z_dim=dim_latent_z, 
                               y_dim=dim_latent_y, 
@@ -174,7 +180,7 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,dataset_name, 
     
         for i in range(n_batches_train):
             # Get batch data
-            data_list, miss_list = data_processing.next_batch(data_train, feat_types_dict, miss_mask_train, batch_size, i)
+            data_list, miss_list = utils.data_processing.next_batch(data_train, feat_types_dict, miss_mask_train, batch_size, i)
     
             # Mask unknown data (set unobserved values to zero)
             data_list_observed = [data * miss_list[:, i].view(batch_size, 1) for i, data in enumerate(data_list)]
@@ -197,7 +203,7 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,dataset_name, 
     
                 
                 for i in range(n_batches_test):
-                    data_list_test, miss_list_test = data_processing.next_batch(data_test, feat_types_dict, miss_mask_test, batch_test_size, i)
+                    data_list_test, miss_list_test = utils.data_processing.next_batch(data_test, feat_types_dict, miss_mask_test, batch_test_size, i)
                 
                     # Mask unknown data (set unobserved values to zero)
                     data_list_observed_test = [data * miss_list_test[:, i].view(batch_test_size, 1) for i, data in enumerate(data_list_test)]
@@ -220,19 +226,19 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,dataset_name, 
     
     
         #Concatenate samples in arrays
-        s_total, z_total, y_total, est_data_train = statistic.samples_concatenation(samples_list)
+        s_total, z_total, y_total, est_data_train = utils.statistic.samples_concatenation(samples_list)
         
         # Transform discrete variables back to the original values
-        data_train_transformed = data_processing.discrete_variables_transformation(data_train[: n_train_samples], feat_types_dict)
-        est_data_train_transformed = data_processing.discrete_variables_transformation(est_data_train[0], feat_types_dict)
+        data_train_transformed = utils.data_processing.discrete_variables_transformation(data_train[: n_train_samples], feat_types_dict)
+        est_data_train_transformed = utils.data_processing.discrete_variables_transformation(est_data_train[0], feat_types_dict)
         # est_data_train_mean_imputed = statistic.mean_imputation(data_train_transformed, miss_mask_train[: n_train_samples], feat_types_dict)
     
         # Compute errors
-        error_observed_samples, error_missing_samples = statistic.error_computation(data_train_transformed, est_data_train_transformed, 
+        error_observed_samples, error_missing_samples = utils.statistic.error_computation(data_train_transformed, est_data_train_transformed, 
                                                                                     feat_types_dict, miss_mask[:n_train_samples])
         
         # # #Create global dictionary of the distribution parameters
-        q_params_complete = statistic.q_distribution_params_concatenation(q_params_list)
+        q_params_complete = utils.statistic.q_distribution_params_concatenation(q_params_list)
         
         #Number of clusters created
         cluster_index = torch.argmax(q_params_complete['s'], 1)
@@ -245,15 +251,15 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,dataset_name, 
         error_observed_train.append(torch.mean(error_observed_samples))
         error_missing_train.append(torch.mean(error_missing_samples))
         if epoch % 100 == 0:
-            visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
+            utils.visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
     
     print("Training finished.")
     
     torch.save(vae_model.state_dict(), network_file)
     
-    visualization.plot_loss_evolution(-np.array(loss_train), title = "HI_VAE loss over epoch",
+    utils.visualization.plot_loss_evolution(-np.array(loss_train), title = "HI_VAE loss over epoch",
                                     xlabel = "Epoch", ylabel = "ELBO")
-    visualization.plot_loss_evolution(-np.array(loss_val), title = "HI_VAE loss over epoch val",
+    utils.visualization.plot_loss_evolution(-np.array(loss_val), title = "HI_VAE loss over epoch val",
                                     xlabel = "Epoch", ylabel = "ELBO")
 
     return vae_model
@@ -265,7 +271,7 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,dataset_name, 
 
 
 
-def HI_VAE_generation(n_samples_forgen, vae_model,data_forgen, feat_types_dict, miss_mask_forgen,true_miss_mask_forgen,n_batches_generation = 1, n_generated_sample = 100):
+def HI_VAE_generation(vae_model,data_forgen, feat_types_dict, miss_mask_forgen,true_miss_mask_forgen,n_batches_generation = 1, n_generated_sample = 100):
     """
     # Train-test split, definition and optimization of the model on control
 
@@ -309,7 +315,7 @@ def HI_VAE_generation(n_samples_forgen, vae_model,data_forgen, feat_types_dict, 
     - The function dynamically calls the corresponding log-likelihood function from `loglik_models_missing_normalize`.
     - It supports various feature types by using `getattr()` to retrieve the appropriate function dynamically.
     """
-    ##n_samples_forgen = data_forgen.shape[0]
+    n_samples_forgen = data_forgen.shape[0]
     batch_size = n_samples_forgen
     print(n_samples_forgen)
     # Compute real missing mask
@@ -324,7 +330,7 @@ def HI_VAE_generation(n_samples_forgen, vae_model,data_forgen, feat_types_dict, 
         samples_list = []
         
         for i in range(n_batches_generation):
-            data_list, miss_list = data_processing.next_batch(data_forgen, feat_types_dict, miss_mask_forgen, batch_size, i)
+            data_list, miss_list = utils.data_processing.next_batch(data_forgen, feat_types_dict, miss_mask_forgen, batch_size, i)
     
             # Mask unknown data (set unobserved values to zero)
             data_list_observed = [data * miss_list[:, i].view(batch_size, 1) for i, data in enumerate(data_list)]
@@ -334,14 +340,13 @@ def HI_VAE_generation(n_samples_forgen, vae_model,data_forgen, feat_types_dict, 
         
         
         #Concatenate samples in arrays
-        est_data_gen = statistic.samples_concatenation(samples_list)[-1]
+        est_data_gen = utils.statistic.samples_concatenation(samples_list)[-1]
         est_data_gen_transformed = []
         for j in range(n_generated_sample):
-            data_trans = data_processing.discrete_variables_transformation(est_data_gen[j], feat_types_dict)
-            data_trans = data_processing.survival_variables_transformation(data_trans,feat_types_dict)
+            data_trans = utils.data_processing.discrete_variables_transformation(est_data_gen[j], feat_types_dict)
+            data_trans = utils.data_processing.survival_variables_transformation(data_trans,feat_types_dict)
             est_data_gen_transformed.append(data_trans.unsqueeze(0))
             
         est_data_gen_transformed = torch.cat(est_data_gen_transformed, dim=0)
-
 
     return est_data_gen_transformed
