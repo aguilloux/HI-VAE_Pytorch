@@ -1,5 +1,5 @@
 name,type,dim,nclass
-survcens,surv_weibull,2,
+survcens,surv,2,
 age,real,1,
 estrec,pos,1,
 menostat,cat,1,2

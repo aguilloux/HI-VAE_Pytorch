@@ -45,7 +45,9 @@ from sksurv.util import Surv
 
 
 
-def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,feat_types_dict,dataset_name, m_perc, mask,  train_test_share = .9, batch_size = 100, n_generated_sample = 10,model_name="HIVAE_inputDropout", dim_latent_z = 20, dim_latent_y = 15, dim_latent_s = 20, epochs = 1000, lr = 1e-3):
+def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,feat_types_dict,dataset_name, m_perc, mask,  train_test_share = .9, 
+                 batch_size = 100, n_generated_sample = 10,model_name="HIVAE_inputDropout", dim_latent_z = 20, dim_latent_y = 15, 
+                 dim_latent_s = 20, epochs = 1000, lr = 1e-3):
     """
     # Train-test split, definition and optimization of the model on control
 
@@ -63,6 +65,9 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,feat_types_dic
     
     feat_types_file : list of torch.Tensor
         List of parameter tensors associated with each feature for likelihood computation.
+
+    feat_types_dict : list of torch.Tensor
+        List of parameter tensors associated with each feature for likelihood computation.
     
     dataset_name : list of dict
         List of normalization parameters for each feature, used in likelihood calculations.
@@ -73,20 +78,39 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,feat_types_dic
     mask : int
         Number of samples to be generated per an input data point
 
+    train_test_share : list of torch.Tensor
+        List of parameter tensors associated with each feature for likelihood computation.
+
+    batch_size : list of torch.Tensor
+        List of parameter tensors associated with each feature for likelihood computation.
+    
+    n_generated_sample : list of dict
+        List of normalization parameters for each feature, used in likelihood calculations.
+
+    model_name : int
+        Number of samples to be generated per an input data point
+        
+    dim_latent_z : int
+        Number of samples to be generated per an input data point
+
+    dim_latent_y : list of dict
+        List of normalization parameters for each feature, used in likelihood calculations.
+
+    dim_latent_s : int
+        Number of samples to be generated per an input data point
+        
+    epochs : int
+        Number of samples to be generated per an input data point
+            
+    lr : int
+        Number of samples to be generated per an input data point
+
+
     Returns:
     --------
-    params_x : list of torch.Tensor
+    vae_model : list of torch.Tensor
         List of estimated parameters for each feature.
-    
-    log_p_x : torch.Tensor
-        Stacked log-likelihood values for observed data across all features.
-    
-    log_p_x_missing : torch.Tensor
-        Stacked log-likelihood values for missing data across all features (used for test log-likelihood evaluation).
-    
-    samples_x : list of torch.Tensor
-        List of sampled values for each feature from the estimated distributions.
-
+  
     Notes:
     ------
     - The function dynamically calls the corresponding log-likelihood function from `loglik_models_missing_normalize`.
@@ -271,26 +295,30 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,feat_types_dic
 
 
 
-def HI_VAE_generation(vae_model,data_forgen, feat_types_dict, miss_mask_forgen,true_miss_mask_forgen,n_batches_generation = 1, n_generated_sample = 100):
+def HI_VAE_generation(vae_model,data_forgen, feat_types_dict, miss_mask_forgen,true_miss_mask_forgen,n_batches_generation = 1, 
+                      n_generated_sample = 100):
     """
     # Train-test split, definition and optimization of the model on control
 
     Parameters:
     -----------
-    batch_data_list : list of torch.Tensor
+    vae_model : list of torch.Tensor
+        List of tensors containing batch-wise feature data.
+        
+    data_forgen : list of torch.Tensor
         List of tensors containing batch-wise feature data.
     
-    feat_types_list : list of dict
+    feat_types_dict : list of dict
         List of dictionaries specifying the type of each feature. Each dictionary should contain:
         - 'type': The type of the feature (e.g., 'real', 'cat', 'ordinal', etc.).
     
-    miss_list : torch.Tensor
+    miss_mask_forgen : torch.Tensor
         A binary mask indicating observed (1) and missing (0) values in the dataset.
     
-    theta : list of torch.Tensor
+    true_miss_mask_forgen : list of torch.Tensor
         List of parameter tensors associated with each feature for likelihood computation.
     
-    normalization_params : list of dict
+    n_batches_generation : list of dict
         List of normalization parameters for each feature, used in likelihood calculations.
 
     n_generated_sample : int
@@ -298,17 +326,8 @@ def HI_VAE_generation(vae_model,data_forgen, feat_types_dict, miss_mask_forgen,t
 
     Returns:
     --------
-    params_x : list of torch.Tensor
+    est_data_gen_transformed : list of torch.Tensor
         List of estimated parameters for each feature.
-    
-    log_p_x : torch.Tensor
-        Stacked log-likelihood values for observed data across all features.
-    
-    log_p_x_missing : torch.Tensor
-        Stacked log-likelihood values for missing data across all features (used for test log-likelihood evaluation).
-    
-    samples_x : list of torch.Tensor
-        List of sampled values for each feature from the estimated distributions.
 
     Notes:
     ------
