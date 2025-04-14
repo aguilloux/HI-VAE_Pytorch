@@ -54,11 +54,10 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,feat_types_dic
     Parameters:
     -----------
     data : list of torch.Tensor
-        List of tensors containing batch-wise feature data.
+        Dataset (example control) used to train and validate the model
     
-    miss_mask : list of dict
-        List of dictionaries specifying the type of each feature. Each dictionary should contain:
-        - 'type': The type of the feature (e.g., 'real', 'cat', 'ordinal', etc.).
+    miss_mask : torch.Tensor
+        A binary mask indicating missing values (1 = observed, 0 = missing).
     
     true_miss_mask : torch.Tensor
         A binary mask indicating observed (1) and missing (0) values in the dataset.
@@ -66,8 +65,8 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,feat_types_dic
     feat_types_file : list of torch.Tensor
         List of parameter tensors associated with each feature for likelihood computation.
 
-    feat_types_dict : list of torch.Tensor
-        List of parameter tensors associated with each feature for likelihood computation.
+    feat_types_dict : list of dict
+        A list of dictionaries specifying the type and dimension of each feature.
     
     dataset_name : list of dict
         List of normalization parameters for each feature, used in likelihood calculations.
@@ -93,7 +92,7 @@ def HI_VAE_model(data, miss_mask, true_miss_mask, feat_types_file,feat_types_dic
     dim_latent_z : int
         Number of samples to be generated per an input data point
 
-    dim_latent_y : list of dict
+    dim_latent_y : int
         List of normalization parameters for each feature, used in likelihood calculations.
 
     dim_latent_s : int
