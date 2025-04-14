@@ -1,0 +1,10 @@
+name,type,dim,nclass
+survcens,surv_weibull,2,
+age,real,1,
+ER,cat,1,2
+horTh,cat,1,2
+menostat,cat,1,2
+pnodes,pos,1,
+PR,cat,1,2
+tgrade,cat,1,3
+tsize,pos,1,
