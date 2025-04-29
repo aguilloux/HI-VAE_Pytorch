@@ -33,7 +33,8 @@ def plot_data(data, feat_types_dict,feat_comparison_name=None):
         n_cols = (num_features - 1) // 2 + (num_features - 1) % 2
     else:
         n_cols = num_features // 2 + num_features % 2
-    _, axes = plt.subplots(n_cols, 2, figsize=(18, 4 * num_features))
+    _, axes = plt.subplots(n_cols, 2, figsize=(18, 2.5 * num_features))
+    plt.subplots_adjust(wspace=0.2, hspace=0.35)
     
     feat_idx = 0
     for i, feature in enumerate(feat_types_dict):
@@ -148,3 +149,35 @@ def plot_loss_evolution(loss_track, title, xlabel, ylabel):
 def print_loss(epoch, start_time, ELBO, avg_KL_s, avg_KL_z):
     print("Epoch: [%2d]  time: %4.4f, ELBO_train: %.8f, KL_z: %.8f, KL_s: %.8f, reconstruction loss: %.8f"
           % (epoch, time.time() - start_time, ELBO, avg_KL_z, avg_KL_s, ELBO + avg_KL_z + avg_KL_s))
+
+
+def visualize_perf(scores, metrics):
+    """
+    Generate boxplots to visualize performance scores across different generators.
+
+    Args:
+        scores (DataFrame): Performance metrics for different synthetic data generators.
+        metrics (list of str): List of column names (metrics) to plot.
+    """
+    num_metrics = len(metrics)
+    fig, axs = plt.subplots(1, num_metrics, figsize=(6 * num_metrics, 6))
+
+    if num_metrics == 1:
+        axs = [axs]  # ensure axs is iterable
+
+    for i, ax in enumerate(axs):
+        # Format axis spines
+        for spine in ax.spines.values():
+            spine.set_linewidth(2)
+            spine.set_edgecolor('black')
+
+        sns.boxplot(data=scores, x='generator', y=metrics[i], ax=ax, 
+                    linewidth = 3, saturation = 1, palette = 'colorblind', 
+                    width = 1, gap = 0.15, whis = 0.8, linecolor="Black")
+        ax.set_xlabel('')
+        ax.set_ylabel(metrics[i], fontsize=25, fontweight="semibold")
+        ax.tick_params(axis='x', labelsize=18)
+        ax.tick_params(axis='y', labelsize=18)
+
+    plt.tight_layout(pad=3)
+    plt.show()
