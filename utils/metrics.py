@@ -100,20 +100,20 @@ def strata_log_rank(data_init, data_syn, strata):
     Returns:
         tuple: Stratified log-rank test statistic for initial data and array for synthetic data.
     """
-    surv_time_init, surv_event_init = data_init['time'].values, data_init['censor'].values.astype(bool)
+    surv_time_init, surv_event_init = data_init['time'], data_init['censor'].astype(bool)
     logrank_init = compute_multivariate_logrank_test(
         surv_time_init,
-        data_init['treatment'].values,
+        data_init['treatment'],
         surv_event_init,
-        data_init[strata].values
+        data_init[strata]
     )
 
     logrank_syn = [
         compute_multivariate_logrank_test(
-            data['time'].values,
-            data['treatment'].values,
-            data['censor'].values.astype(bool),
-            data[strata].values
+            data['time'],
+            data['treatment'],
+            data['censor'].astype(bool),
+            data[strata]
         ) for data in data_syn
     ]
 

@@ -167,17 +167,21 @@ def visualize_perf(scores, metrics):
 
     for i, ax in enumerate(axs):
         # Format axis spines
+        metric_name, opt = metrics[i]
         for spine in ax.spines.values():
             spine.set_linewidth(2)
             spine.set_edgecolor('black')
 
-        sns.boxplot(data=scores, x='generator', y=metrics[i], ax=ax, 
+        sns.boxplot(data=scores, x='generator', y=metric_name, ax=ax,
                     linewidth = 3, saturation = 1, palette = 'colorblind', 
                     width = 1, gap = 0.15, whis = 0.8, linecolor="Black")
         ax.set_xlabel('')
-        ax.set_ylabel(metrics[i], fontsize=25, fontweight="semibold")
+        ax.set_ylabel(metric_name, fontsize=20, fontweight="semibold")
         ax.tick_params(axis='x', labelsize=18)
         ax.tick_params(axis='y', labelsize=18)
-
+        if opt == "max":
+            ax.legend(title='Maximize \u2191', title_fontsize=15)
+        else:
+            ax.legend(title='Minimize \u2193', title_fontsize=15)
     plt.tight_layout(pad=3)
     plt.show()
