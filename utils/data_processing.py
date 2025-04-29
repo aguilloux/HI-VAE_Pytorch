@@ -322,14 +322,7 @@ def batch_normalization(batch_data_list, feat_types_list, miss_list):
             normalization_parameters.append((data_mean_log, data_var_log))
 
         elif feature_type in ('surv_weibull','surv_loglog'):
-            # # Log transformation (No variance normalization)
-            # normalized_d = torch.zeros_like(d)
-            # normalized_d[~missing_mask][:, 0] = torch.log1p(observed_data[:, 0])  # Log-transform observed values
-            # normalized_d[~missing_mask][:, 1] = observed_data[:, 1]
-            # normalized_d[missing_mask] = 0  # Missing values set to 0
-            # normalization_parameters.append((0.0, 1.0))
-
-           # min max normalization
+            # Min max normalization
             data_min = torch.min(observed_data[:, 0]) - 1e-3
             data_max = torch.max(observed_data[:, 0])
             normalization_parameters.append((data_min, data_max))
@@ -404,10 +397,6 @@ def discrete_variables_transformation(data, types_dict):
             output.append(torch.argmax(subset, dim=1, keepdim=True))  # Argmax for categorical variables
         elif d['type'] == 'ordinal':
             output.append((torch.sum(subset, dim=1, keepdim=True) - 1))  # Sum-based transformation for ordinal variables
-        #elif d['type'] in ['surv','surv_weibull']:
-        #    time_cens = (torch.min(subset, dim=1, keepdim=True))
-        #    output.append(time_cens.values)  # censored survival time
-        #    output.append(1-(time_cens.indices))
         else:
             output.append(subset)  # Keep continuous variables unchanged
         
@@ -448,13 +437,23 @@ def survival_variables_transformation(data, types_dict):
     
     return output
 
-def encode_and_bind(original_dataframe, feature_to_encode):
-    #print(np.unique(original_dataframe[feature_to_encode]))#.shape[0])
-    if np.unique(original_dataframe[feature_to_encode]).shape[0] > 2 :
-        dummies = pd.get_dummies(original_dataframe[feature_to_encode],drop_first=True, prefix=feature_to_encode, prefix_sep='')
-        res = pd.concat([original_dataframe, dummies], axis=1)
-        #print(res.head())
-        res = res.drop([feature_to_encode], axis=1)
-    else:
-        res = original_dataframe
-    return(res) 
+
+def encode_and_bind(df, feature):
+    """
+    One-hot encodes a categorical feature if it has more than 2 unique values.
+    Drops the original column and appends the encoded dummies.
+    
+    Parameters:
+        df (pd.DataFrame): The original DataFrame.
+        feature (str): The feature/column name to encode.
+        
+    Returns:
+        pd.DataFrame: Modified DataFrame with encoding applied.
+    """
+    unique_values = df[feature].nunique()
+    
+    if unique_values > 2:
+        dummies = pd.get_dummies(df[feature], drop_first=True, prefix=feature, prefix_sep='')
+        df = pd.concat([df.drop(columns=[feature]), dummies], axis=1)
+        
+    return df
