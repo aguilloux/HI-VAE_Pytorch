@@ -378,8 +378,8 @@ def loglik_surv_piecewise(batch_data, list_type, theta, normalization_params, n_
         for i in range(n_samples):
             cum_i = 0
             for j, (start, end) in enumerate(intervals):
-                if T_surv[i] < end:  # Half-open interval [start, end)
-                    cum_i += densities[i, j].item() * (end - max(T_surv[i], start))
+                if T_surv[i] > start:  # Half-open interval [start, end)
+                    cum_i += densities[i, j].item() * (min(end, T_surv[i]) -  start)
 
             # To avoid nan value when taking log
             if 1 - cum_i > 1e-10:
