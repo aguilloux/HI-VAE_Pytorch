@@ -14,7 +14,7 @@ from torch.distributions import Normal, Categorical, Poisson
 from torchsurv.loss import weibull
 
 
-def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normalization_params, n_generated_sample=1):
+def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normalization_params, n_generated_sample=1, T_max=None):
     """
     Evaluates the log-likelihood of observed and missing data.
 
@@ -70,7 +70,8 @@ def loglik_evaluation(batch_data_list, feat_types_list, miss_list, theta, normal
         "ordinal": loglik_ordinal,
         "surv": loglik_surv,
         "surv_weibull": loglik_surv_weibull,
-        "surv_loglog": loglik_surv_loglog
+        "surv_loglog": loglik_surv_loglog,
+        "surv_piecewise": loglik_surv_piecewise
     }
 
     # Compute log-likelihood for each feature type
@@ -312,6 +313,139 @@ def loglik_surv(batch_data, list_type, theta, normalization_params, n_generated_
     }
 
 
+def loglik_surv_piecewise(batch_data, list_type, theta, normalization_params, n_generated_sample):
+    """
+    Computes the log-likelihood for survival data
+
+    Parameters:
+    -----------
+    batch_data : tuple of (torch.Tensor, torch.Tensor)
+        - `data`: Observed positive real-valued survival times and censoring indicators.
+        - `missing_mask`: Binary mask (1 = observed, 0 = missing).
+
+    list_type : dict
+        Dictionary specifying feature types (not used in function but kept for compatibility).
+
+    theta : tuple of (torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor)
+        - `est_mean_T`: Predicted log-mean for survival time.
+        - `est_var_T`: Predicted log-variance for survival time.
+        - `est_mean_C`: Predicted log-mean for censoring time.
+        - `est_var_C`: Predicted log-variance for censoring time.
+
+    normalization_params : tuple of (torch.Tensor, torch.Tensor)
+        - `data_mean_log`: Log mean of the dataset.
+        - `data_var_log`: Log variance of the dataset.
+
+    n_samples : int
+        Number of samples to generate per input data point.
+
+    Returns:
+    --------
+    output : dict
+        - `params`: Estimated mean and variance for survival and censoring.
+        - `log_p_x`: Log-likelihood of observed data.
+        - `log_p_x_missing`: Log-likelihood of missing data.
+        - `samples`: Sampled values from the estimated log-normal distribution.
+    """
+
+    # Extract observed data and mask
+    data, missing_mask = batch_data
+    missing_mask = missing_mask.float()
+
+    # Extract normalization parameters
+    data_min, data_max = normalization_params
+    T_surv, delta = data[:, 0].unsqueeze(1), data[:, 1].unsqueeze(1)
+    T_surv_scaled = (T_surv - data_min) / (data_max - data_min)
+
+    # Extract predicted parameters and enforce positivity
+    theta_T, theta_C, intervals = theta
+    theta_T = torch.clamp(theta_T, min=-10, max=10)
+    theta_C = torch.clamp(theta_C, min=-10, max=10)
+
+    def compute_density(theta, intervals):
+        widths =  torch.Tensor([end - start for (start, end) in intervals])
+        prob = torch.exp(theta) / (1 + torch.sum(torch.exp(theta), dim=1, keepdim=True))
+        prob = torch.cat((prob, 1 - prob.sum(dim=1, keepdim=True)), dim=1)
+        densities = prob / widths
+        densities = torch.clamp(densities, min=1e-10)
+
+        return densities
+    
+    def compute_log_survival(T_surv, theta, intervals):
+        densities = compute_density(theta, intervals)
+        n_samples = T_surv.shape[0]
+        survival = torch.zeros(n_samples)
+        for i in range(n_samples):
+            cum_i = 0
+            for j, (start, end) in enumerate(intervals):
+                if T_surv[i] < end:  # Half-open interval [start, end)
+                    cum_i += densities[i, j].item() * (end - max(T_surv[i], start))
+
+            # To avoid nan value when taking log
+            if 1 - cum_i > 1e-10:
+                survival[i] = 1 - cum_i
+            else:
+                survival[i] = 1e-10
+
+        return torch.log(survival).reshape((-1, 1))
+
+    def compute_log_density(T_surv, theta, intervals):
+        densities = compute_density(theta, intervals)
+        n_samples = T_surv.shape[0]
+        log_density = torch.zeros(n_samples)
+        for i in range(n_samples):
+            for j, (start, end) in enumerate(intervals):
+                if start <= T_surv[i] < end:  # Half-open interval [start, end)
+                    log_density[i] = torch.log(densities[i, j])
+                    break
+
+        return log_density.reshape((-1, 1))
+    
+    density_T, density_C = compute_density(theta_T, intervals), compute_density(theta_C, intervals)
+    tau = intervals[-1][0]
+    log_p_x_T = (T_surv_scaled < tau).to(torch.int32) * (delta * compute_log_density(T_surv_scaled, theta_T, intervals) + (1 - delta) * compute_log_survival(T_surv_scaled, theta_T, intervals)) 
+    + (T_surv_scaled >= tau).to(torch.int32) * compute_log_survival(T_surv_scaled, theta_T, intervals)
+    log_p_x_C = (T_surv_scaled < tau).to(torch.int32) * ((1 - delta) * compute_log_density(T_surv_scaled, theta_C, intervals) + delta * compute_log_survival(T_surv_scaled, theta_C, intervals)) 
+    + (T_surv_scaled >= tau).to(torch.int32) * compute_log_density(T_surv_scaled, theta_C, intervals)
+
+    # Compute overall log-likelihood based on censoring indicator
+    log_p_x = (log_p_x_T + log_p_x_C).sum(dim=1)
+
+    # Generate samples from density function
+    def sample_from_density(density, intervals, data_min, data_max):
+        widths = torch.Tensor([end - start for (start, end) in intervals])
+
+        # 1. Compute probability mass of each interval
+        probs = density * widths
+        probs = probs / probs.sum(dim=1, keepdim=True)  # normalize just in case
+
+        # 2. Sample interval indices
+        samples = []
+        for i, prob in enumerate(probs):
+            interval_indices = torch.multinomial(prob, num_samples=1)
+            # 3. Sample uniformly within the chosen intervals
+            t_start = torch.Tensor([intervals[interval_indices][0]])
+            t_width = widths[interval_indices]
+            u = torch.rand(1)
+            samples.append((t_start + u * t_width) * (data_max - data_min) / 1.0  + data_min)
+
+        return torch.stack(samples)
+
+    sample_T, sample_C = [], []
+    for _ in range(n_generated_sample):
+        sample_T.append(sample_from_density(density_T, intervals, data_min, data_max))
+        sample_C.append(sample_from_density(density_C, intervals, data_min, data_max))
+    sample_T = torch.stack(sample_T, dim=0)
+    sample_C = torch.stack(sample_C, dim=0)
+
+    return {
+        "params": [theta_T, theta_C],
+        "log_p_x": log_p_x * missing_mask,
+        "log_p_x_missing": log_p_x * (1.0 - missing_mask),
+        "samples": torch.cat((sample_T, sample_C), dim=-1),
+    }
+
+
 def loglik_surv_weibull(batch_data, list_type, theta, normalization_params, n_generated_sample):
     """
     Computes the log-likelihood for positive real-valued data using a Weibull distribution.
@@ -445,7 +579,6 @@ def loglik_surv_loglog(batch_data, list_type, theta, normalization_params, n_gen
     est_scale_T = F.softplus(est_scale_T).clamp(min=min_scale, max=max_scale)
     est_shape_C = F.softplus(est_shape_C).clamp(min=min_shape, max=max_shape)
     est_scale_C = F.softplus(est_scale_C).clamp(min=min_scale, max=max_scale)
-    #log_est_shape_T, log_est_scale_T, log_est_shape_C, log_est_scale_C = torch.log(est_shape_T), torch.log(est_scale_T), torch.log(est_shape_C), torch.log(est_scale_C)
     
 
 

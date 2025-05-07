@@ -172,9 +172,9 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
 
         return est_data_gen_transformed
 
-def run(data, miss_mask, true_miss_mask, feat_types_file, feat_types_dict, n_generated_sample):
+def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict, n_generated_sample):
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
-    data = data
+    data, intervals = data_ext
     miss_mask = miss_mask
     true_miss_mask = true_miss_mask
     dim_latent_z = 20
@@ -192,7 +192,8 @@ def run(data, miss_mask, true_miss_mask, feat_types_file, feat_types_dict, n_gen
                             y_dim=dim_latent_y, 
                             s_dim=dim_latent_s, 
                             y_dim_partition=None, 
-                            feat_types_file=feat_types_file)
+                            feat_types_file=feat_types_file,
+                            intervals=intervals)
     
     model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs)
     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_sample)

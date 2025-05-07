@@ -150,7 +150,7 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
                 count_data += 1
             data_complete.append(count_data)
 
-        elif feature['type'] in ['surv', 'surv_weibull', 'surv_loglog']:
+        elif feature['type'] in ['surv', 'surv_weibull', 'surv_loglog', 'surv_piecewise']:
             # Survival data take two columns
             data_complete.append(data[:, feat_idx : feat_idx + 2])
             feat_idx += 1
@@ -321,7 +321,7 @@ def batch_normalization(batch_data_list, feat_types_list, miss_list):
 
             normalization_parameters.append((data_mean_log, data_var_log))
 
-        elif feature_type in ('surv_weibull','surv_loglog'):
+        elif feature_type in ('surv_weibull','surv_loglog', 'surv_piecewise'):
             # Min max normalization
             data_min = torch.min(observed_data[:, 0]) - 1e-3
             data_max = torch.max(observed_data[:, 0])
@@ -426,7 +426,7 @@ def survival_variables_transformation(data, types_dict):
 
     feat_idx = 0
     for d in types_dict:
-        if d['type'] in ['surv','surv_weibull','surv_loglog']:
+        if d['type'] in ['surv','surv_weibull','surv_loglog', 'surv_piecewise']:
             subset = output[:, feat_idx : feat_idx + 2]
             time_cens = (torch.min(subset, dim=1, keepdim=True))
             output[:, feat_idx ] = time_cens.values.squeeze(1)
