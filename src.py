@@ -69,8 +69,8 @@ class HIVAE(nn.Module):
 
             elif feat['type'] in ['surv_piecewise']:
                 n_intervals = len(intervals)
-                self.theta_layer["feat_" + str(i)] = {'theta_T' : nn.Linear(feat_y_dim + s_dim, n_intervals - 1, bias=False),
-                                                      'theta_C' : nn.Linear(feat_y_dim + s_dim, n_intervals - 1, bias=False),
+                self.theta_layer["feat_" + str(i)] = {'theta_T' : nn.Linear(feat_y_dim + s_dim, n_intervals, bias=False),
+                                                      'theta_C' : nn.Linear(feat_y_dim + s_dim, n_intervals, bias=False),
                                                       'intervals' : intervals}
 
             elif feat['type'] in ['count']:

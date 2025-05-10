@@ -354,87 +354,80 @@ def loglik_surv_piecewise(batch_data, list_type, theta, normalization_params, n_
 
     # Extract normalization parameters
     data_min, data_max = normalization_params
-    T_surv, delta = data[:, 0].unsqueeze(1), data[:, 1].unsqueeze(1)
+    T_surv, delta = data[:, 0], data[:, 1]
     T_surv_scaled = (T_surv - data_min) / (data_max - data_min)
 
     # Extract predicted parameters and enforce positivity
     theta_T, theta_C, intervals = theta
-    theta_T = torch.clamp(theta_T, min=-10, max=10)
-    theta_C = torch.clamp(theta_C, min=-10, max=10)
 
-    def compute_density(theta, intervals):
-        widths =  torch.Tensor([end - start for (start, end) in intervals])
-        prob = torch.exp(theta) / (1 + torch.sum(torch.exp(theta), dim=1, keepdim=True))
-        prob = torch.cat((prob, 1 - prob.sum(dim=1, keepdim=True)), dim=1)
-        densities = prob / widths
-        densities = torch.clamp(densities, min=1e-10)
+    n, K = T_surv_scaled.shape[0], len(intervals)
+    eps = 1e-8
+    breaks = torch.cat((torch.Tensor([interval[0] for interval in intervals]), torch.Tensor([intervals[-1][1]])))
+    bin_idx = torch.bucketize(T_surv_scaled, breaks[1:], right=False).flatten()  # shape: (n,)
+    t0 = breaks[bin_idx]         # left edge of interval
+    t1 = breaks[bin_idx + 1]     # right edge
+    bin_width = (t1 - t0).clamp(min=eps)  # avoid division by zero
 
-        return densities
-    
-    def compute_log_survival(T_surv, theta, intervals):
-        densities = compute_density(theta, intervals)
-        n_samples = T_surv.shape[0]
-        survival = torch.zeros(n_samples)
-        for i in range(n_samples):
-            cum_i = 0
-            for j, (start, end) in enumerate(intervals):
-                if T_surv[i] > start:  # Half-open interval [start, end)
-                    cum_i += densities[i, j].item() * (min(end, T_surv[i]) -  start)
+    density_T, density_C = F.softmax(theta_T, dim=1), F.softmax(theta_C, dim=1)
+    cdf_T, cdf_C = torch.cumsum(density_T, dim=1), torch.cumsum(density_C, dim=1)
+    surv_T, surv_C = 1.0 - cdf_T, 1.0 - cdf_C
 
-            # To avoid nan value when taking log
-            if 1 - cum_i > 1e-10:
-                survival[i] = 1 - cum_i
-            else:
-                survival[i] = 1e-10
+    S0_T = torch.where(bin_idx == 0, torch.ones(n), surv_T[torch.arange(n), bin_idx - 1])
+    S1_T = surv_T[torch.arange(n), bin_idx]
+    S0_C = torch.where(bin_idx == 0, torch.ones(n), surv_C[torch.arange(n), bin_idx - 1])
+    S1_C = surv_C[torch.arange(n), bin_idx]
 
-        return torch.log(survival).reshape((-1, 1))
+    # Linear interpolation weight
+    w = (T_surv_scaled - t0) / bin_width
+    S_T_t = (1 - w) * S0_T + w * S1_T
+    S_C_t = (1 - w) * S0_C + w * S1_C
 
-    def compute_log_density(T_surv, theta, intervals):
-        densities = compute_density(theta, intervals)
-        n_samples = T_surv.shape[0]
-        log_density = torch.zeros(n_samples)
-        for i in range(n_samples):
-            for j, (start, end) in enumerate(intervals):
-                if start <= T_surv[i] < end:  # Half-open interval [start, end)
-                    log_density[i] = torch.log(densities[i, j])
-                    break
+    log_f_T = torch.log(density_T[torch.arange(n), bin_idx] / bin_width + eps)
+    log_S_T = torch.log(S_T_t + eps)
+    log_f_C = torch.log(density_C[torch.arange(n), bin_idx] / bin_width + eps)
+    log_S_C = torch.log(S_C_t + eps)
 
-        return log_density.reshape((-1, 1))
-    
-    density_T, density_C = compute_density(theta_T, intervals), compute_density(theta_C, intervals)
-    tau = intervals[-1][0]
-    log_p_x_T = (T_surv_scaled < tau).to(torch.int32) * (delta * compute_log_density(T_surv_scaled, theta_T, intervals) + (1 - delta) * compute_log_survival(T_surv_scaled, theta_T, intervals)) 
-    + (T_surv_scaled >= tau).to(torch.int32) * compute_log_survival(T_surv_scaled, theta_T, intervals)
-    log_p_x_C = (T_surv_scaled < tau).to(torch.int32) * ((1 - delta) * compute_log_density(T_surv_scaled, theta_C, intervals) + delta * compute_log_survival(T_surv_scaled, theta_C, intervals)) 
-    + (T_surv_scaled >= tau).to(torch.int32) * compute_log_density(T_surv_scaled, theta_C, intervals)
+    log_p_x_T = delta * log_f_T + (1 - delta) * log_S_T
+    log_p_x_C = (1 - delta) * log_f_C + delta * log_S_C
 
     # Compute overall log-likelihood based on censoring indicator
-    log_p_x = (log_p_x_T + log_p_x_C).sum(dim=1)
+    log_p_x = (log_p_x_T + log_p_x_C)
 
     # Generate samples from density function
     def sample_from_density(density, intervals, data_min, data_max):
-        widths = torch.Tensor([end - start for (start, end) in intervals])
+
+        batch_size = density.shape[0]
+        # Interval widths and start points
+        intervals_tensor = torch.tensor(intervals, dtype=torch.float32)  # shape: (K, 2)
+        starts = intervals_tensor[:, 0]  # shape: (K,)
+        widths = intervals_tensor[:, 1] - intervals_tensor[:, 0]  # shape: (K,)
 
         # 1. Compute probability mass of each interval
         probs = density * widths
         probs = probs / probs.sum(dim=1, keepdim=True)  # normalize just in case
 
-        # 2. Sample interval indices
-        samples = []
-        for i, prob in enumerate(probs):
-            interval_indices = torch.multinomial(prob, num_samples=1)
-            # 3. Sample uniformly within the chosen intervals
-            t_start = torch.Tensor([intervals[interval_indices][0]])
-            t_width = widths[interval_indices]
-            u = torch.rand(1)
-            samples.append((t_start + u * t_width) * (data_max - data_min) / 1.0  + data_min)
+        # 2. Sample interval indices for each item
+        interval_indices = torch.multinomial(probs, num_samples=1).squeeze(1)  # shape: (batch_size,)
 
-        return torch.stack(samples)
+        # 3. Sample uniformly within the selected intervals
+        t_start = starts[interval_indices]        # (batch_size,)
+        t_width = widths[interval_indices]        # (batch_size,)
+        u = torch.rand(batch_size) # (batch_size,)
+
+        samples = t_start + u * t_width           # sampled time in interval
+        samples = data_min + (samples * (data_max - data_min)) / 1.0  # optional rescaling
+
+        return samples.unsqueeze(1)  # shape: (batch_size, 1)
 
     sample_T, sample_C = [], []
     for _ in range(n_generated_sample):
-        sample_T.append(sample_from_density(density_T, intervals, data_min, data_max))
-        sample_C.append(sample_from_density(density_C, intervals, data_min, data_max))
+        T_s = sample_from_density(density_T, intervals, data_min, data_max)
+        C_s = sample_from_density(density_C, intervals, data_min, data_max)
+        mask = (T_s > data_max) & (C_s > data_max)
+        C_s[mask] = data_max
+
+        sample_T.append(T_s)
+        sample_C.append(C_s)
     sample_T = torch.stack(sample_T, dim=0)
     sample_C = torch.stack(sample_C, dim=0)
 
