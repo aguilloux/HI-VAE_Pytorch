@@ -80,7 +80,7 @@ def plot_data(data, feat_types_dict,feat_comparison_name=None):
 
         elif feature_type in ["surv", 'surv_weibull', 'surv_loglog', 'surv_piecewise']:
             
-            survival_time, censoring_indicator,treat  =  data[:, list(range((feat_idx), (feat_idx) + 2)) + [feat_comparison_index]].T
+            survival_time, censoring_indicator, treat  =  data[:, list(range((feat_idx), (feat_idx) + 2)) + [feat_comparison_index]].T
     
             time_S1, survival_prob_S1, conf_int = kaplan_meier_estimator((censoring_indicator[treat==1]==1), survival_time[treat==1], conf_type="log-log")
             time_C1, survival_prob_C1, conf_int = kaplan_meier_estimator((1-censoring_indicator[treat==1]==1), survival_time[treat==1], conf_type="log-log")
