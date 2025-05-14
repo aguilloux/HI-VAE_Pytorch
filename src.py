@@ -98,7 +98,7 @@ class HIVAE(nn.Module):
                                                       'mean' : nn.Linear(feat_y_dim + s_dim, 1, bias=False)}
 
 
-    def forward(self, batch_data_oberved, batch_data, batch_miss, tau=1.0, n_generated_sample=1):
+    def forward(self, batch_data_oberved, batch_data, batch_miss, tau=1.0, n_generated_dataset=1):
         """ 
         Forward pass through the encoder and decoder 
         """
@@ -111,7 +111,7 @@ class HIVAE(nn.Module):
         q_params, samples = self.encode(X, tau)
         
         # Decode
-        p_params, log_p_x, log_p_x_missing, samples = self.decode(samples, batch_data, batch_miss, normalization_params, n_generated_sample)
+        p_params, log_p_x, log_p_x_missing, samples = self.decode(samples, batch_data, batch_miss, normalization_params, n_generated_dataset)
 
         # Compute loss
         ELBO, loss_reconstruction, KL_z, KL_s = self.loss_function(log_p_x, p_params, q_params)
@@ -128,7 +128,7 @@ class HIVAE(nn.Module):
             "q_params": q_params
         }
 
-    def decode(self, samples, batch_data_list, miss_list, normalization_params, n_generated_sample=1):
+    def decode(self, samples, batch_data_list, miss_list, normalization_params, n_generated_dataset=1):
         """
         Decodes latent variables into output reconstructions.
 
@@ -178,7 +178,7 @@ class HIVAE(nn.Module):
 
         # Compute log-likelihood and reconstructed data
         p_params["x"], log_p_x, log_p_x_missing, samples["x"] = utils.likelihood.loglik_evaluation(
-            batch_data_list, self.feat_types_list, miss_list, theta, normalization_params, n_generated_sample
+            batch_data_list, self.feat_types_list, miss_list, theta, normalization_params, n_generated_dataset
         )
 
         return p_params, log_p_x, log_p_x_missing, samples
