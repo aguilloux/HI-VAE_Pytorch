@@ -20,7 +20,7 @@ import utils.theta_estimation
 
 
 class HIVAE(nn.Module):
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition=[], feat_types_file=[]):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition=[], feat_types_file=[], intervals=None):
         
         super().__init__()
         
@@ -63,8 +63,27 @@ class HIVAE(nn.Module):
                                                       'sigma_T' : nn.Linear(s_dim, 1, bias=False),
                                                       'mean_C' : nn.Linear(feat_y_dim + s_dim, 1, bias=False),
                                                       'sigma_C' : nn.Linear(s_dim, 1, bias=False)}
+
             elif feat['type'] in ['surv_weibull','surv_loglog']:
                 self.theta_layer["feat_" + str(i)] = {'theta' : nn.Linear(feat_y_dim + s_dim, 4, bias=False)}
+
+            elif feat['type'] in ['surv_piecewise']:
+                n_intervals = len(intervals)
+                # self.theta_layer["feat_" + str(i)] = {'theta_T' : nn.Linear(feat_y_dim + s_dim, n_intervals, bias=False),
+                #                                       'theta_C' : nn.Linear(feat_y_dim + s_dim, n_intervals, bias=False),
+                #                                       'intervals' : intervals}
+                self.theta_layer["feat_" + str(i)] = {'theta_T' :   nn.Sequential(
+                                                                    nn.Linear(feat_y_dim + s_dim, out_features=20, bias=False),
+                                                                    nn.ReLU(),
+                                                                    nn.Linear(in_features=20, out_features=n_intervals, bias=False)
+                                                                    ),
+                                                      'theta_C' :   nn.Sequential(
+                                                                    nn.Linear(feat_y_dim + s_dim, out_features=20, bias=False),
+                                                                    nn.ReLU(),
+                                                                    nn.Linear(in_features=20, out_features=n_intervals, bias=False)
+                                                                    ),
+                                                      'intervals' : intervals}
+
 
             elif feat['type'] in ['count']:
                 self.theta_layer["feat_" + str(i)] = nn.Linear(feat_y_dim + s_dim, 1, bias=False)
@@ -79,7 +98,7 @@ class HIVAE(nn.Module):
                                                       'mean' : nn.Linear(feat_y_dim + s_dim, 1, bias=False)}
 
 
-    def forward(self, batch_data_oberved, batch_data, batch_miss, tau=1.0, n_generated_sample=1):
+    def forward(self, batch_data_oberved, batch_data, batch_miss, tau=1.0, n_generated_dataset=1):
         """ 
         Forward pass through the encoder and decoder 
         """
@@ -92,7 +111,7 @@ class HIVAE(nn.Module):
         q_params, samples = self.encode(X, tau)
         
         # Decode
-        p_params, log_p_x, log_p_x_missing, samples = self.decode(samples, batch_data, batch_miss, normalization_params, n_generated_sample)
+        p_params, log_p_x, log_p_x_missing, samples = self.decode(samples, batch_data, batch_miss, normalization_params, n_generated_dataset)
 
         # Compute loss
         ELBO, loss_reconstruction, KL_z, KL_s = self.loss_function(log_p_x, p_params, q_params)
@@ -109,7 +128,7 @@ class HIVAE(nn.Module):
             "q_params": q_params
         }
 
-    def decode(self, samples, batch_data_list, miss_list, normalization_params, n_generated_sample=1):
+    def decode(self, samples, batch_data_list, miss_list, normalization_params, n_generated_dataset=1):
         """
         Decodes latent variables into output reconstructions.
 
@@ -159,7 +178,7 @@ class HIVAE(nn.Module):
 
         # Compute log-likelihood and reconstructed data
         p_params["x"], log_p_x, log_p_x_missing, samples["x"] = utils.likelihood.loglik_evaluation(
-            batch_data_list, self.feat_types_list, miss_list, theta, normalization_params, n_generated_sample
+            batch_data_list, self.feat_types_list, miss_list, theta, normalization_params, n_generated_dataset
         )
 
         return p_params, log_p_x, log_p_x_missing, samples
@@ -246,10 +265,10 @@ class HIVAE_factorized(HIVAE):
         
     """
 
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals):
 
         # print(f'[*] Importing model: {model_name}')
-        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file)
+        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals)
     
     def encode(self, X, tau):
         """
@@ -324,10 +343,10 @@ class HIVAE_inputDropout(HIVAE):
         
     """
 
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals):
 
         # print(f'[*] Importing model: {model_name}')
-        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file)
+        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals)
     
     def encode(self, X, tau):
         """
