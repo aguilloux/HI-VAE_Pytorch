@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy.linalg import toeplitz
 from lifelines.statistics import logrank_test
 from warnings import warn
@@ -102,3 +103,49 @@ def compute_logrank_test(control, treat):
         event_observed_B=surv_event_treat
     )
     return -np.log(result.p_value)
+
+
+
+
+def simulation(beta_features, treatment_effect , n_samples , n_features_bytype = 4, 
+                n_features_multiplier = 3, nnz = 3 , p_treated = 0.5,
+                a_T = 2, a_C = 1, lamb_C = 2, data_types_create = True):
+    n_features = n_features_multiplier * n_features_bytype
+    beta = np.insert(beta_features, 0, treatment_effect)
+    X = features_normal_cov_toeplitz(n_samples,n_features)
+    X[:,(n_features_bytype ) : (2*n_features_bytype )] = np.abs(X[:,(n_features_bytype ) : (2*n_features_bytype )])
+    X[:,(2*n_features_bytype ) : (3*n_features_bytype )] = 1 * (X[:,(2*n_features_bytype ) : (3*n_features_bytype )]>= 0)
+    treatment = np.random.binomial(1, p_treated, size=(n_samples,1))
+    design = np.hstack((treatment,X))
+    marker = np.dot(design,beta)
+    U = np.random.uniform(size = n_samples)
+    V = np.random.uniform(size = n_samples)
+    T = (- np.log(1-U) / np.exp(marker))**(1/a_T)
+    C = lamb_C * (- np.log(1-V))**(1/a_C)
+    data = pd.DataFrame(X)
+    data['treatment'] = treatment
+    data['time'] = np.min([T,C],axis=0)
+    data['censor'] = np.argmin([C,T],axis=0)
+    control = data[data['treatment'] == 0]
+    treated = data[data['treatment'] == 1]
+    if data_types_create == True:
+        names = []
+        for x in range(1, n_features_bytype  * n_features_multiplier + 1):
+            names.append("feat{0}".format(x))
+        names.append("survcens")
+        types = np.concatenate([np.repeat("real",n_features_bytype),np.repeat("pos",n_features_bytype),np.repeat("cat",n_features_bytype)]).tolist()
+        types.append('surv_piecewise')
+        dims = np.repeat(1,n_features_bytype * n_features_multiplier).tolist()
+        dims.append(2)
+        nclasses = np.concatenate([np.repeat("",n_features_bytype),np.repeat("",n_features_bytype),np.repeat("2",n_features_bytype)]).tolist()
+        nclasses.append("")
+        data_types = pd.DataFrame({'name' : names , 'type' : types , 'dim' : dims, 'nclass' : nclasses})
+        return(control,treated,data_types)
+    else :
+        return(control,treated)
+
+
+
+
+    
+    
