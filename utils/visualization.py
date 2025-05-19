@@ -79,7 +79,7 @@ def plot_data(data, feat_types_dict,feat_comparison_name=None):
                 ax.set_xticklabels([label.get_text() for label in reduced_labels])  # Set labels
             ax.set_xlabel("")
 
-        elif feature_type in ["surv", 'surv_weibull', 'surv_loglog']:
+        elif feature_type in ["surv", 'surv_weibull', 'surv_loglog', 'surv_piecewise']:
             
             survival_time, censoring_indicator,treat  =  data[:, list(range((feat_idx), (feat_idx) + 2)) + [feat_comparison_index]].T
     

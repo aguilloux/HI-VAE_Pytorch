@@ -150,7 +150,7 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
                 count_data += 1
             data_complete.append(count_data)
 
-        elif feature['type'] in ['surv', 'surv_weibull', 'surv_loglog']:
+        elif feature['type'] in ['surv', 'surv_weibull', 'surv_loglog', 'surv_piecewise']:
             # Survival data take two columns
             data_complete.append(data[:, feat_idx : feat_idx + 2])
             feat_idx += 1
