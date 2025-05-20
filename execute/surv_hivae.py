@@ -10,7 +10,7 @@ import importlib
 import warnings
 warnings.filterwarnings("ignore")
 
-def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs):
+def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose = True):
 
     # Train-test split on control
     train_test_share = .9
@@ -102,7 +102,6 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
             q_params_list.append(vae_res["q_params"])
             log_p_x_total.append(vae_res["log_p_x"])
             log_p_x_missing_total.append(vae_res["log_p_x_missing"])
-
         #Concatenate samples in arrays
         s_total, z_total, y_total, est_data_train = statistic.samples_concatenation(samples_list)
         
@@ -127,10 +126,13 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
         loss_val.append(avg_loss_val)
         error_observed_train.append(torch.mean(error_observed_samples))
         error_missing_train.append(torch.mean(error_missing_samples))
-        if epoch % 100 == 0:
-            visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
-
-    print("Training finished.")
+        if verbose:
+            if epoch % 100 == 0:
+                visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
+    if verbose:
+        
+        print("Training finished.")
+    
     
     return vae_model, loss_train, loss_val
 
@@ -180,7 +182,7 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
 
         return est_data_gen_transformed
 
-def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  n_generated_dataset, n_generated_sample=None):
+def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  n_generated_dataset, n_generated_sample=None, verbose = True):
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
     data, intervals = data_ext
     miss_mask = miss_mask
@@ -203,7 +205,7 @@ def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  
                             feat_types_file=feat_types_file,
                             intervals=intervals)
     
-    model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs)
+    model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs,verbose)
     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                    feat_types_dict, n_generated_dataset, n_generated_sample)
 

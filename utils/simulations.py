@@ -107,7 +107,7 @@ def compute_logrank_test(control, treat):
 
 
 
-def simulation(beta_features, treatment_effect , n_samples , n_features_bytype = 4, 
+def simulation(beta_features, treatment_effect , n_samples , surv_type = 'surv_piecewise', n_features_bytype = 4, 
                 n_features_multiplier = 3, nnz = 3 , p_treated = 0.5,
                 a_T = 2, a_C = 1, lamb_C = 2, data_types_create = True):
     n_features = n_features_multiplier * n_features_bytype
@@ -134,7 +134,7 @@ def simulation(beta_features, treatment_effect , n_samples , n_features_bytype =
             names.append("feat{0}".format(x))
         names.append("survcens")
         types = np.concatenate([np.repeat("real",n_features_bytype),np.repeat("pos",n_features_bytype),np.repeat("cat",n_features_bytype)]).tolist()
-        types.append('surv_weibull')
+        types.append(surv_type)
         dims = np.repeat(1,n_features_bytype * n_features_multiplier).tolist()
         dims.append(2)
         nclasses = np.concatenate([np.repeat("",n_features_bytype),np.repeat("",n_features_bytype),np.repeat("2",n_features_bytype)]).tolist()

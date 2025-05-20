@@ -9,7 +9,7 @@ import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
-def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs):
+def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose = True):
 
     # Train-test split on control
     train_test_share = .9
@@ -129,10 +129,11 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
         loss_val.append(avg_loss_val)
         error_observed_train.append(torch.mean(error_observed_samples))
         error_missing_train.append(torch.mean(error_missing_samples))
-        if epoch % 100 == 0:
-            visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
-
-    print("Training finished.")
+        
+        if verbose:
+            if epoch % 100 == 0:
+                visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
+            print("Training finished.")
     
     return vae_model, loss_train, loss_val
 
