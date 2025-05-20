@@ -134,7 +134,7 @@ def simulation(beta_features, treatment_effect , n_samples , n_features_bytype =
             names.append("feat{0}".format(x))
         names.append("survcens")
         types = np.concatenate([np.repeat("real",n_features_bytype),np.repeat("pos",n_features_bytype),np.repeat("cat",n_features_bytype)]).tolist()
-        types.append('surv_piecewise')
+        types.append('surv_weibull')
         dims = np.repeat(1,n_features_bytype * n_features_multiplier).tolist()
         dims.append(2)
         nclasses = np.concatenate([np.repeat("",n_features_bytype),np.repeat("",n_features_bytype),np.repeat("2",n_features_bytype)]).tolist()
