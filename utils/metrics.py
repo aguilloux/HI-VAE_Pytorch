@@ -189,6 +189,13 @@ def general_metrics(data_init, data_gen, generator):
     """
 
     synthcity_dataloader_init = SurvivalAnalysisDataLoader(data_init, target_column = "censor", time_to_event_column = "time")
+    metrics = {
+    'sanity': ['nearest_syn_neighbor_distance'],
+    'stats': ['jensenshannon_dist', 'ks_test', 'survival_km_distance'],
+    'performance': ['feat_rank_distance'],
+    'detection': ['detection_xgb'],
+    'privacy': ['k-map', 'distinct l-diversity', 'identifiability_score']
+}
     scores = []
     for idx, generated_data in enumerate(data_gen):
         enable_reproducible_results(idx)
@@ -199,7 +206,7 @@ def general_metrics(data_init, data_gen, generator):
                                         X_syn=synthcity_dataloader_syn, 
                                         reduction='mean', # default mean
                                         n_histogram_bins=10, # default 10
-                                        metrics=None, # all metrics
+                                        metrics=metrics, # all metrics
                                         task_type='survival_analysis', 
                                         use_cache=True)
 
