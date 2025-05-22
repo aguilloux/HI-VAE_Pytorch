@@ -20,8 +20,7 @@ def run(data, columns, target_column, time_to_event_column, n_generated_sample):
     cond_gen = data[[target_column]]
     est_data_gen_transformed_survgan = []
     for j in range(n_generated_sample):
-        out = model_survgan.generate(count=577, cond=cond_gen)
+        out = model_survgan.generate(count=data.shape[0], cond=cond_gen)
         est_data_gen_transformed_survgan.append(out)
 
     return est_data_gen_transformed_survgan
-    

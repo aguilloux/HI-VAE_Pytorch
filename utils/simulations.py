@@ -108,8 +108,8 @@ def compute_logrank_test(control, treat):
 
 
 def simulation(beta_features, treatment_effect , n_samples , independent = True, surv_type = 'surv_piecewise', n_features_bytype = 4, 
-                n_features_multiplier = 3, nnz = 3 , p_treated = 0.5,
-                a_T = 2, a_C = 1, lamb_C = 0.5, data_types_create = True):
+                n_features_multiplier = 3, nnz = 3 , p_treated = 0.5,a_T=2,
+                a_C = 2., lamb_C = 6., lamb_C_indpt = 2.5, data_types_create = True):
     n_features = n_features_multiplier * n_features_bytype
     beta = np.insert(beta_features, 0, treatment_effect)
     X = features_normal_cov_toeplitz(n_samples,n_features)
@@ -124,7 +124,7 @@ def simulation(beta_features, treatment_effect , n_samples , independent = True,
     if independent:
         C = lamb_C * (- np.log(1-V))**(1/a_C)
     else:
-        C = lamb_C * (- np.log(1-V) / np.exp(marker))**(1/a_C)
+        C = lamb_C_indpt * (- np.log(1-V) / np.exp(marker))**(1/a_C)
     data = pd.DataFrame(X)
     data['treatment'] = treatment
     data['time'] = np.min([T,C],axis=0)
