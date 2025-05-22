@@ -47,7 +47,7 @@ To have an environment compatible with Synthcity,
 
 ```console
 $ cd HI-VAE
-$ conda create --name env_synthcity
+$ conda create --name env_synthcity python=3.12
 $ conda activate env_synthcity
 $ pip install synthcity
 $ pip install -r pip_requirements_synthcity.txt
