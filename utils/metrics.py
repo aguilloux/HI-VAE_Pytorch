@@ -195,11 +195,23 @@ def general_metrics(data_init, data_gen, generator):
         clear_cache()
         synthcity_dataloader_syn = SurvivalAnalysisDataLoader(generated_data, target_column = "censor", time_to_event_column = "time")
 
+        # evaluation = Metrics().evaluate(X_gt=synthcity_dataloader_init, # can be dataloaders or dataframes
+        #                                 X_syn=synthcity_dataloader_syn, 
+        #                                 reduction='mean', # default mean
+        #                                 n_histogram_bins=10, # default 10
+        #                                 metrics=None, # all metrics
+        #                                 task_type='survival_analysis', 
+        #                                 use_cache=True)
+        
         evaluation = Metrics().evaluate(X_gt=synthcity_dataloader_init, # can be dataloaders or dataframes
                                         X_syn=synthcity_dataloader_syn, 
                                         reduction='mean', # default mean
                                         n_histogram_bins=10, # default 10
-                                        metrics=None, # all metrics
+                                        metrics={'stats': ['jensenshannon_dist', 'ks_test', 'survival_km_distance'], 
+                                                 'detection': ['detection_xgb'],
+                                                 'sanity': ['nearest_syn_neighbor_distance'],
+                                                 'privacy': ['k-map']
+                                                }, # compute only selected metrics
                                         task_type='survival_analysis', 
                                         use_cache=True)
 
