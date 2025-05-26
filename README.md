@@ -40,7 +40,7 @@ $ pip install -r pip_requirements.txt
 $ chmod +x script_HIVAE.sh
 ```
 
-Then, run preprocessing and tutorial of your data.
+Then, run preprocessing and tutorial on your data.
 
 
 To have an environment compatible with Synthcity,

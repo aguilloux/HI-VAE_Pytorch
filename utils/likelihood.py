@@ -592,7 +592,7 @@ def loglik_surv_loglog(batch_data, list_type, theta, normalization_params, n_gen
         """
         # Ensure parameters are positive to avoid numerical issues
         scale = torch.clamp(scale, min=1e-5)
-        shape = torch.clamp(shapem1, min=1e-5) + 1.
+        shape = shapem1 + 1#torch.clamp(shapem1, min=1e-5) + 1.
 
         # Compute hazard function h(t) 
         h_t = (shape/scale) * (t/scale) ** (shape-1)   / (1 + (t/scale) ** shape)  # Avoid division by zero
@@ -615,7 +615,7 @@ def loglik_surv_loglog(batch_data, list_type, theta, normalization_params, n_gen
         """
         # Ensure sigma is positive to avoid numerical issues
         scale = torch.clamp(scale, min=1e-5)
-        shape = torch.clamp(shapem1, min=1e-5) + 1.
+        shape = shapem1 + 1#torch.clamp(shapem1, min=1e-5) + 1.
 
         
         # Compute cumulative hazard: H(t) = -log(S(t))
@@ -637,7 +637,7 @@ def loglik_surv_loglog(batch_data, list_type, theta, normalization_params, n_gen
         """
         # Ensure sigma is positive to avoid numerical issues
         scale = torch.clamp(scale, min=1e-5)
-        shape = torch.clamp(shapem1, min=1e-5) + 1.
+        shape = shapem1 + 1#torch.clamp(shapem1, min=1e-5) + 1.
 
 
         # Compute cumulative hazard: H(t) = -log(S(t))
@@ -652,7 +652,9 @@ def loglik_surv_loglog(batch_data, list_type, theta, normalization_params, n_gen
     # Compute log-likelihood
 
     log_p_x_T = delta * log_hazard_loglog(T_surv_scaled, est_scale_T, est_shapem1_T) - cumulative_hazard_loglog(T_surv_scaled, est_scale_T, est_shapem1_T)
-    log_p_x_C = (1 - delta) * weibull.log_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False)
+    #log_p_x_C = (1 - delta) * weibull.log_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False) - weibull.cumulative_hazard(torch.stack([log_est_scale_C, log_est_shape_C]).T, T_surv_scaled, all_times=False)
+    log_p_x_C = (1 - delta) * log_hazard_loglog(T_surv_scaled, est_scale_C, est_shape_C) - cumulative_hazard_loglog(T_surv_scaled, est_scale_C, est_shape_C)
+
     log_p_x = log_p_x_T + log_p_x_C
 
     # generate
@@ -671,9 +673,9 @@ def loglik_surv_loglog(batch_data, list_type, theta, normalization_params, n_gen
         sample_T.append(T_sampled)
         sample_C.append(C_sampled)
 
-    max_threshold =  max(T_surv).item()
+    max_threshold =  data_max
     # max_threshold = 1e20
-    sample_T = torch.stack(sample_T, dim=0)#.clamp(0, max_threshold)
+    sample_T = torch.stack(sample_T, dim=0)##.clamp(0, max_threshold)
     sample_C = torch.stack(sample_C, dim=0).clamp(0, max_threshold)
 
     return {
