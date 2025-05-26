@@ -147,20 +147,25 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
 
 def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample=None):
 
+    # Compute real missing mask
+    miss_mask = torch.multiply(miss_mask, true_miss_mask)
+
     if n_generated_sample is None:
         n_generated_sample = data.shape[0]
+        # data_ext = data
+        # miss_mask_ext = miss_mask
+        indices = torch.randint(0, data.shape[0], (n_generated_sample,))  # random indices with replacement
+        data_ext = data[indices]
+        miss_mask_ext = miss_mask[indices]
+    else:
+        indices = torch.randint(0, data.shape[0], (n_generated_sample,))  # random indices with replacement
+        data_ext = data[indices]
+        miss_mask_ext = miss_mask[indices]
+
     batch_size = n_generated_sample
 
     # Number of batches
     n_batches_generation = 1
-
-    # Compute real missing mask
-    miss_mask = torch.multiply(miss_mask, true_miss_mask)
-
-
-    indices = torch.randint(0, data.shape[0], (n_generated_sample,))  # random indices with replacement
-    data_ext = data[indices]
-    miss_mask_ext = miss_mask[indices]
 
     with torch.no_grad():
 
@@ -189,7 +194,7 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
         return est_data_gen_transformed
 
 def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
-        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 2}, verbose = True):
+        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1}, verbose = True):
 
     set_seed()
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
