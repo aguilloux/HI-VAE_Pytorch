@@ -34,6 +34,8 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
 
     # Number of batches
     n_train_samples = data_train.shape[0]
+    if n_train_samples < batch_size:
+        raise ValueError("Batch size must be less than the number of training samples")
     n_batches_train = int(np.floor(n_train_samples / batch_size))
     n_train_samples = n_batches_train * batch_size
 
