@@ -15,7 +15,7 @@ def set_seed(seed=1):
     np.random.seed(seed)                         # NumPy
     torch.manual_seed(seed)                      # PyTorch (CPU)
 
-def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs):
+def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose = True):
 
     # Train-test split on control
     train_test_share = .9
@@ -132,10 +132,11 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
         loss_val.append(avg_loss_val)
         error_observed_train.append(torch.mean(error_observed_samples))
         error_missing_train.append(torch.mean(error_missing_samples))
-        if epoch % 100 == 0:
-            visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
-
-    print("Training finished.")
+        if verbose:
+            if epoch % 100 == 0:
+                visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
+    if verbose:
+        print("Training finished.")
     
     return vae_model, loss_train, loss_val
 
@@ -185,7 +186,10 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
 
         return est_data_gen_transformed
 
-def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  n_generated_dataset, n_generated_sample=None, params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 2}):
+def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
+        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 2}, verbose = True):
+
+    set_seed()
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
     data, intervals = data_ext
     miss_mask = miss_mask
@@ -209,7 +213,7 @@ def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  
                             intervals=intervals,
                             n_layers_surv_piecewise=params["n_layers_surv_piecewise"])
     
-    model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs)
+    model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                    feat_types_dict, n_generated_dataset, n_generated_sample)
 
