@@ -3,6 +3,8 @@ import pandas as pd
 from scipy.linalg import toeplitz
 from lifelines.statistics import logrank_test
 from warnings import warn
+import random
+from scipy.stats import norm
 
 def features_normal_cov_toeplitz(n_samples, n_features: int = 30,
                                  cov_corr: float = 0.5, dtype="float64"):
@@ -46,7 +48,7 @@ def weights_sparse_exp(n_weigths: int = 100, nnz: int = 10, scale: float = 10.,
     Instance of weights for a model, given by a vector with
     exponentially decaying components: the j-th entry is given by
 
-    .. math: (-1)^j exp(-j / scale)
+    .. math: (-1)^j \exp(-j / scale)
 
     for 0 <= j <= nnz - 1. For j >= nnz, the entry is zero.
 
@@ -107,126 +109,146 @@ def compute_logrank_test(control, treat):
 
 
 
-def simulation(beta_features, treatment_effect , n_samples , independent = True, surv_type = 'surv_piecewise', n_features_bytype = 4, 
-                nnz = 3 , p_treated = 0.5,a_T=2,
-                a_C = 2., lamb_C = 6., lamb_C_indpt = 2.5, data_types_create = True):
-    n_features = 3 * n_features_bytype
+def simulation(beta_features, treatment_effect, n_samples, independent = True, surv_type = 'surv_piecewise', 
+               feature_types_list = ["pos", "real", "cat"], n_features_bytype = 4, n_active_features = 3 , p_treated = 0.5, 
+               shape_T = 2, shape_C = 2, scale_C = 6., scale_C_indep = 2.5, data_types_create = True, seed=0):
+    """
+    Simulate a survival dataset with structured covariates and treatment effect.
+
+    Parameters:
+    -----------
+    
+    beta_features : array-like
+        Coefficients for the covariate features (excluding treatment).
+
+    treatment_effect : float
+        Coefficient for the binary treatment variable.
+
+    n_samples : int
+        Number of samples (rows) to generate.
+
+    surv_type : str, default='surv_piecewise'
+        Type identifier for the survival outcome (used in metadata output).
+
+    n_features_bytype : int, default=4
+        Number of features per feature type (real, positive, categorical).
+
+    n_active_features : int, default=3
+        Number of non-zero coefficients in beta (not directly used here).
+
+    p_treated : float, default=0.5
+        Probability of receiving treatment (for Bernoulli sampling).
+
+    shape_T : float, default=2
+        Shape parameter for the Weibull survival time distribution.
+
+    shape_C : float, default=1
+        Shape parameter for the Weibull censoring time distribution.
+
+    scale_C : float, default=2
+        Scale parameter for the censoring distribution.
+
+    data_types_create : bool, default=True
+        Whether to return a DataFrame describing feature types (metadata).
+
+    seed : int, default=0
+        Random seed for reproducibility.
+
+    Returns:
+    --------
+    control : DataFrame
+        Subset of the simulated dataset with untreated individuals.
+    treated : DataFrame
+        Subset of the simulated dataset with treated individuals.
+    data_types : DataFrame (optional)
+        Metadata describing variable names, types, dimensions, and classes
+        (only returned if `data_types_create=True`).
+
+    Notes:
+    ------
+    - Feature matrix `X` has 3 segments: real-valued, positive (abs), and binary (0/1).
+    - Treatment assignment is random based on `p_treated`.
+    - Survival and censoring times are simulated using Weibull models.
+    - Censoring indicator: 1 = event occurred, 0 = censored.
+    """
+
+    # Set random seeds for reproducibility
+    random.seed(seed)
+    np.random.seed(seed)
+
+    # Define feature dimensions
+    n_feature_types = len(feature_types_list)
+    n_features = n_feature_types * n_features_bytype
     beta = np.insert(beta_features, 0, treatment_effect)
-    X = features_normal_cov_toeplitz(n_samples,n_features)
-    X[:,(n_features_bytype ) : (2*n_features_bytype )] = np.abs(X[:,(n_features_bytype ) : (2*n_features_bytype )])
-    X[:,(2*n_features_bytype ) : (3*n_features_bytype )] = 1 * (X[:,(2*n_features_bytype ) : (3*n_features_bytype )]>= 0)
-    treatment = np.random.binomial(1, p_treated, size=(n_samples,1))
-    design = np.hstack((treatment,X))
-    marker = np.dot(design,beta)
+    
+    # Generate feature matrix
+    X = features_normal_cov_toeplitz(n_samples, n_features)
+    # Apply transformations by feature type
+    for i, feat_type in enumerate(feature_types_list):
+        if feat_type in ["real"]:
+            continue
+        elif feat_type in ["pos"]:
+            X[:, i * n_features_bytype : (i + 1) * n_features_bytype] = np.abs(X[:, i * n_features_bytype : (i + 1) * n_features_bytype])
+        elif feat_type in ["cat"]:
+            X[:, i * n_features_bytype : (i + 1) * n_features_bytype] = 1 * (X[:, i * n_features_bytype : (i + 1) * n_features_bytype] >= 0)
+        else:
+            raise ValueError("Feature type {} is not supported yet".format(feat_type))
+    
+    # Assign treatment
+    treatment = np.random.binomial(1, p_treated, size = (n_samples, 1))
+    
+    # Build design matrix and compute marker
+    design = np.hstack((treatment, X))
+    marker = np.dot(design, beta)
     U = np.random.uniform(size = n_samples)
     V = np.random.uniform(size = n_samples)
-    T = (- np.log(1-U) / np.exp(marker))**(1/a_T)
+    # Simulate survival and censoring times
+    T = (-np.log(1 - U) / np.exp(marker))**(1 / shape_T)
     if independent:
-        C = lamb_C * (- np.log(1-V))**(1/a_C)
+        C = scale_C * (-np.log(1 - V))**(1 / shape_C)
     else:
-        C = lamb_C_indpt * (- np.log(1-V) / np.exp(marker))**(1/a_C)
+        C = scale_C_indep * (-np.log(1 - V) / np.exp(marker))**(1 / shape_C)
+
+    
+    # Build final dataset
     data = pd.DataFrame(X)
     data['treatment'] = treatment
-    data['time'] = np.min([T,C],axis=0)
-    data['censor'] = np.argmin([C,T],axis=0)
+    data['time'] = np.min([T, C], axis=0)
+    data['censor'] = np.argmin([C, T], axis=0)
+
+    # Split by treatment
     control = data[data['treatment'] == 0]
     treated = data[data['treatment'] == 1]
+
+    # Optionally create data type specification
     if data_types_create == True:
+
         names = []
-        for x in range(1, n_features_bytype  * 3 + 1):
+        for x in range(1, n_feature_types * n_features_bytype + 1):
             names.append("feat{0}".format(x))
         names.append("survcens")
-        types = np.concatenate([np.repeat("real",n_features_bytype),np.repeat("pos",n_features_bytype),np.repeat("cat",n_features_bytype)]).tolist()
+        
+        types = np.concatenate([np.repeat(feat_type, n_features_bytype) for feat_type in feature_types_list]).tolist()
         types.append(surv_type)
-        dims = np.repeat(1,n_features_bytype * 3).tolist()
+
+        dims = np.repeat(1, n_feature_types * n_features_bytype).tolist()
         dims.append(2)
-        nclasses = np.concatenate([np.repeat("",n_features_bytype),np.repeat("",n_features_bytype),np.repeat("2",n_features_bytype)]).tolist()
+
+        nclasses = []
+        for feat_type in feature_types_list:
+            if feat_type in ["cat"]:
+                nclasses.append(np.repeat("2", n_features_bytype))
+            else:
+                nclasses.append(np.repeat("", n_features_bytype))
+        nclasses = np.concatenate(nclasses).tolist()
         nclasses.append("")
+
         data_types = pd.DataFrame({'name' : names , 'type' : types , 'dim' : dims, 'nclass' : nclasses})
-        return(control,treated,data_types)
+
+        return(control, treated, data_types)
+
     else :
-        return(control,treated)
-
-def simulation(beta_features, treatment_effect , n_samples , independent = True, surv_type = 'surv_piecewise', n_features_bytype = 4, 
-             nnz = 3 , p_treated = 0.5,a_T=2,
-                a_C = 2., lamb_C = 6., lamb_C_indpt = 2.5, data_types_create = True):
-    n_features = 2 * n_features_bytype
-    beta = np.insert(beta_features, 0, treatment_effect)
-    X = features_normal_cov_toeplitz(n_samples,n_features)
-    X[:,(n_features_bytype ) : (2*n_features_bytype )] = 1 * (X[:,(n_features_bytype ) : (2*n_features_bytype )]>= 0)
-    treatment = np.random.binomial(1, p_treated, size=(n_samples,1))
-    design = np.hstack((treatment,X))
-    marker = np.dot(design,beta)
-    U = np.random.uniform(size = n_samples)
-    V = np.random.uniform(size = n_samples)
-    T = (- np.log(1-U) / np.exp(marker))**(1/a_T)
-    if independent:
-        C = lamb_C * (- np.log(1-V))**(1/a_C)
-    else:
-        C = lamb_C_indpt * (- np.log(1-V) / np.exp(marker))**(1/a_C)
-    data = pd.DataFrame(X)
-    data['treatment'] = treatment
-    data['time'] = np.min([T,C],axis=0)
-    data['censor'] = np.argmin([C,T],axis=0)
-    control = data[data['treatment'] == 0]
-    treated = data[data['treatment'] == 1]
-    if data_types_create == True:
-        names = []
-        for x in range(1, n_features_bytype  * 2 + 1):
-            names.append("feat{0}".format(x))
-        names.append("survcens")
-        types = np.concatenate([np.repeat("real",n_features_bytype),np.repeat("cat",n_features_bytype)]).tolist()
-        types.append(surv_type)
-        dims = np.repeat(1,n_features_bytype * 2).tolist()
-        dims.append(2)
-        nclasses = np.concatenate([np.repeat("",n_features_bytype),np.repeat("2",n_features_bytype)]).tolist()
-        nclasses.append("")
-        data_types = pd.DataFrame({'name' : names , 'type' : types , 'dim' : dims, 'nclass' : nclasses})
-        return(control,treated,data_types)
-    else :
-        return(control,treated)        
-
-
-
-def simulation2(beta_features, treatment_effect , n_samples , independent = True, surv_type = 'surv_piecewise', n_features_bytype = 4, 
-                 nnz = 3 , p_treated = 0.5,a_T=2,
-                a_C = 1., lamb_C = 6., lamb_C_indpt = 4.5, data_types_create = True):
-    n_features = 2 * n_features_bytype
-    beta = np.insert(beta_features, 0, treatment_effect)
-    X = features_normal_cov_toeplitz(n_samples,n_features)
-    #X[:,(n_features_bytype ) : (2*n_features_bytype )] = np.abs(X[:,(n_features_bytype ) : (2*n_features_bytype )])
-    X[:,(n_features_bytype ) : (2*n_features_bytype )] = 1 * (X[:,(n_features_bytype ) : (2*n_features_bytype )]>= 0)
-    treatment = np.random.binomial(1, p_treated, size=(n_samples,1))
-    design = np.hstack((treatment,X))
-    marker = np.dot(design,beta)
-    U = np.random.uniform(size = n_samples)
-    V = np.random.uniform(size = n_samples)
-    T = (- np.log(1-U) / np.exp(marker))**(1/a_T)
-    if independent:
-        C = lamb_C * (- np.log(1-V))**(1/a_C)
-    else:
-        C = lamb_C_indpt * (- np.log(1-V) / np.exp(marker))**(1/a_C)
-    data = pd.DataFrame(X)
-    data['treatment'] = treatment
-    data['time'] = np.min([T,C],axis=0)
-    data['censor'] = np.argmin([C,T],axis=0)
-    control = data[data['treatment'] == 0]
-    treated = data[data['treatment'] == 1]
-    if data_types_create == True:
-        names = []
-        for x in range(1, 2 * n_features_bytype   + 1):
-            names.append("feat{0}".format(x))
-        names.append("survcens")
-        types = np.concatenate([np.repeat("real",n_features_bytype),np.repeat("cat",n_features_bytype)]).tolist()
-        types.append(surv_type)
-        dims = np.repeat(1,n_features_bytype * 2).tolist()
-        dims.append(2)
-        nclasses = np.concatenate([np.repeat("",n_features_bytype),np.repeat("2",n_features_bytype)]).tolist()
-        nclasses.append("")
-        data_types = pd.DataFrame({'name' : names , 'type' : types , 'dim' : dims, 'nclass' : nclasses})
-        return(control,treated,data_types)
-    else :
-        return(control,treated) 
+        return(control, treated)    
 
 def cpower(mc , mi , loghaz,alpha):
     """
