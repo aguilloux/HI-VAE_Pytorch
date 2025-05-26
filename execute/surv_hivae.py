@@ -239,7 +239,7 @@ def hyperparameter_space():
     hp_space = [
         CategoricalDistribution(name="n_layers_surv_piecewise", choices=[1, 2]),
         CategoricalDistribution(name="lr", choices=[1e-3, 2e-4, 1e-4]),
-        CategoricalDistribution(name="batch_size", choices=[64, 128, 256, 512]),
+        CategoricalDistribution(name="batch_size", choices=[64, 100, 128, 256, 512]),
         IntegerDistribution(name="z_dim", low=5, high=30, step=5),
         IntegerDistribution(name="y_dim", low=5, high=30, step=5),
         IntegerDistribution(name="s_dim", low=5, high=30, step=5),
