@@ -267,7 +267,7 @@ class HIVAE_factorized(HIVAE):
         
     """
 
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise=2):
 
         # print(f'[*] Importing model: {model_name}')
         super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise)
@@ -345,7 +345,7 @@ class HIVAE_inputDropout(HIVAE):
         
     """
 
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise=2):
 
         # print(f'[*] Importing model: {model_name}')
         super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise)

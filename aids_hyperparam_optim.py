@@ -88,24 +88,29 @@ for generator_name in generators_sel:
     else: 
         print("Creating new optuna study for {}...".format(generator_name))
         if generator_name in ["HI-VAE"]:
-            T_surv = torch.Tensor(df_init_control.time)
-            T_surv_norm = (T_surv - T_surv.min()) / (T_surv.max() - T_surv.min())
-            n_intervals = 5
-            T_intervals = torch.linspace(0., T_surv_norm.max(), n_intervals)
-            T_intervals = torch.cat([T_intervals, torch.tensor([2 * T_intervals[-1] - T_intervals[-2]])])
-            intervals = [(T_intervals[i].item(), T_intervals[i + 1].item()) for i in range(len(T_intervals) - 1)]
+            
+            # # For piecewise Weibull distribution, we need to define intervals 
+            # T_surv = torch.Tensor(df_init_control.time)
+            # T_surv_norm = (T_surv - T_surv.min()) / (T_surv.max() - T_surv.min())
+            # n_intervals = 5
+            # T_intervals = torch.linspace(0., T_surv_norm.max(), n_intervals)
+            # T_intervals = torch.cat([T_intervals, torch.tensor([2 * T_intervals[-1] - T_intervals[-2]])])
+            # intervals = [(T_intervals[i].item(), T_intervals[i + 1].item()) for i in range(len(T_intervals) - 1)]
+            
+            # No intervals needed for Weibull distribution
+            intervals = None  
 
             best_params, study = generators_dict[generator_name].optuna_hyperparameter_search((data_init_control_encoded, intervals), 
-                                                                                                    data_init_control,
-                                                                                                    miss_mask_control, 
-                                                                                                    true_miss_mask_control, 
-                                                                                                    feat_types_file_control, 
-                                                                                                    feat_types_dict, 
-                                                                                                    n_generated_sample=n_generated_samples, 
-                                                                                                    n_splits=n_splits,
-                                                                                                    n_trials=n_trials, 
-                                                                                                    columns=aids_control_fnames, 
-                                                                                                    study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name),)
+                                                                                            data_init_control,
+                                                                                            miss_mask_control, 
+                                                                                            true_miss_mask_control, 
+                                                                                            feat_types_file_control, 
+                                                                                            feat_types_dict, 
+                                                                                            n_generated_sample=n_generated_samples, 
+                                                                                            n_splits=n_splits,
+                                                                                            n_trials=n_trials, 
+                                                                                            columns=aids_control_fnames, 
+                                                                                            study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name),)
             best_params_dict[generator_name] = best_params
             study_dict[generator_name] = study
             with open("optuna_results/best_params_{}_{}.json".format(name_config, generator_name), "w") as f:

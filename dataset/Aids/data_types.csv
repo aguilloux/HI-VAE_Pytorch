@@ -1,5 +1,5 @@
 name,type,dim,nclass
-survcens,surv_piecewise,2,
+survcens,surv_weibull,2,
 tx,cat,1,2
 strat2,cat,1,2
 sex,cat,1,2

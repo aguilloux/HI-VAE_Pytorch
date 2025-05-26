@@ -198,7 +198,8 @@ def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  
 
     set_seed()
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
-    data, intervals = data_ext
+
+    data, intervals = data_ext    
     miss_mask = miss_mask
     true_miss_mask = true_miss_mask
     dim_latent_z = params["z_dim"]
@@ -218,7 +219,8 @@ def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  
                             y_dim_partition=None, 
                             feat_types_file=feat_types_file,
                             intervals=intervals,
-                            n_layers_surv_piecewise=params["n_layers_surv_piecewise"])
+                            n_layers_surv_piecewise=params["n_layers_surv_piecewise"]
+                            )
     
     model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
@@ -261,6 +263,7 @@ def hyperparameter_space():
 def optuna_hyperparameter_search(data_encoded, data_initial, miss_mask, true_miss_mask, feat_types_file, feat_types_dict, n_generated_sample, n_splits, n_trials, columns, study_name='optuna_study_surv_hivae'):
    
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
+
     data, intervals = data_encoded
     df = pd.DataFrame(data_initial.numpy(), columns=columns) # Preprocessed dataset
     miss_mask = miss_mask
@@ -280,7 +283,8 @@ def optuna_hyperparameter_search(data_encoded, data_initial, miss_mask, true_mis
                                     y_dim_partition=None, 
                                     feat_types_file=feat_types_file,
                                     intervals=intervals, 
-                                    n_layers_surv_piecewise=params["n_layers_surv_piecewise"])
+                                    n_layers_surv_piecewise=params["n_layers_surv_piecewise"]
+        )
 
         scores = []
         try:
