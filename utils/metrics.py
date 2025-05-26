@@ -31,10 +31,10 @@ def compute_logrank_test(control, treat):
     Returns:
         float: Negative logarithm of the p-value from the log-rank test.
     """
-    surv_time_control = control['time'].values.astype(bool)
-    surv_event_control = control['censor'].values
-    surv_time_treat = treat['time'].values.astype(bool)
-    surv_event_treat = treat['censor'].values
+    surv_time_control = control['time'].values
+    surv_event_control = control['censor'].values.astype(bool)
+    surv_time_treat = treat['time'].values
+    surv_event_treat = treat['censor'].values.astype(bool)
 
     result = logrank_test(
         surv_time_control, surv_time_treat,
