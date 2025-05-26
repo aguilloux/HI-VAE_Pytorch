@@ -92,10 +92,10 @@ def compute_logrank_test(control, treat):
     Returns:
         float: Negative logarithm of the p-value from the log-rank test.
     """
-    surv_time_control = control['time'].values.astype(bool)
-    surv_event_control = control['censor'].values
-    surv_time_treat = treat['time'].values.astype(bool)
-    surv_event_treat = treat['censor'].values
+    surv_time_control = control['time'].values
+    surv_event_control = control['censor'].values.astype(bool)
+    surv_time_treat = treat['time'].values
+    surv_event_treat = treat['censor'].values.astype(bool)
 
     result = logrank_test(
         surv_time_control, surv_time_treat,
@@ -148,6 +148,24 @@ def simulation(beta_features, treatment_effect , n_samples , independent = True,
         return(control,treated)
 
 
+def cpower(mc , mi , loghaz,alpha):
+    """
+    mc : number of survivors in control arm
+    mi : number of survivors in treated arm
+    loghaz : log of hazard ratios / treatment coefficient
+    alpha : level of test
+    """
+    ## Find its variance
+    v = 1/mc + 1/mi
+
+    ## Get same as /sasmacro/samsizc.sas if use 4/(mc+mi)
+
+    sd = np.sqrt(v)
+
+    z =  -norm.ppf(alpha/2)
+
+    Power = 1 - (norm.cdf(z - np.abs(loghaz)/sd) - norm.cdf(-z - np.abs(loghaz)/sd))
+    return(Power)
 
 
     
