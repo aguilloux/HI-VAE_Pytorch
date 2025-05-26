@@ -1,3 +1,6 @@
+￼
+
+
 import numpy as np
 import pandas as pd
 from scipy.linalg import toeplitz
@@ -41,7 +44,7 @@ def features_normal_cov_toeplitz(n_samples, n_features: int = 30,
         return features.astype(dtype)
     return features
 
-def weights_sparse_exp(n_weigths: int = 100, nnz: int = 10, scale: float = 10.,
+def weights_sparse_exp(n_features: int = 100, n_active_features: int = 10, scale: float = 10.,
                        dtype="float64") -> np.ndarray:
     """Sparse and exponential model weights generator
 
@@ -57,7 +60,7 @@ def weights_sparse_exp(n_weigths: int = 100, nnz: int = 10, scale: float = 10.,
     n_weigths : `int`, default=100
         Number of weights
 
-    nnz : `int`, default=10
+    n_active_features : `int`, default=10
         Number of non-zero weights
 
     scale : `float`, default=10.
@@ -71,14 +74,15 @@ def weights_sparse_exp(n_weigths: int = 100, nnz: int = 10, scale: float = 10.,
     output : np.ndarray, shape=(n_weigths,)
         The weights vector
     """
-    if nnz >= n_weigths:
+    if n_active_features >= n_features:
         warn(("nnz must be smaller than n_weights "
               "using nnz=n_weigths instead"))
-        nnz = n_weigths
-    idx = np.arange(nnz)
-    out = np.zeros(n_weigths, dtype=dtype)
-    out[:nnz] = np.exp(-idx / scale)
-    out[:nnz:2] *= -1
+        n_active_features = n_features
+    idx = np.arange(n_active_features)
+    out = np.zeros(n_features, dtype=dtype)
+    out[:n_active_features] = np.exp(-idx / scale)
+    out[:n_active_features:2] *= -1
+
     return out
 
 
@@ -109,7 +113,7 @@ def compute_logrank_test(control, treat):
 
 
 
-def simulation(beta_features, treatment_effect, n_samples, independent = True, surv_type = 'surv_piecewise', 
+def simulation(treatment_effect, n_samples, independent = True, surv_type = 'surv_piecewise', 
                feature_types_list = ["pos", "real", "cat"], n_features_bytype = 4, n_active_features = 3 , p_treated = 0.5, 
                shape_T = 2, shape_C = 2, scale_C = 6., scale_C_indep = 2.5, data_types_create = True, seed=0):
     """
@@ -117,9 +121,6 @@ def simulation(beta_features, treatment_effect, n_samples, independent = True, s
 
     Parameters:
     -----------
-    
-    beta_features : array-like
-        Coefficients for the covariate features (excluding treatment).
 
     treatment_effect : float
         Coefficient for the binary treatment variable.
@@ -179,7 +180,8 @@ def simulation(beta_features, treatment_effect, n_samples, independent = True, s
     # Define feature dimensions
     n_feature_types = len(feature_types_list)
     n_features = n_feature_types * n_features_bytype
-    beta = np.insert(beta_features, 0, treatment_effect)
+    feat_coefs = np.concatenate([weights_sparse_exp(n_features_bytype, n_active_features) for _ in range(len(feature_types_list))])
+    coefs = np.insert(feat_coefs, 0, treatment_effect)
     
     # Generate feature matrix
     X = features_normal_cov_toeplitz(n_samples, n_features)
@@ -199,7 +201,7 @@ def simulation(beta_features, treatment_effect, n_samples, independent = True, s
     
     # Build design matrix and compute marker
     design = np.hstack((treatment, X))
-    marker = np.dot(design, beta)
+    marker = np.dot(design, coefs)
     U = np.random.uniform(size = n_samples)
     V = np.random.uniform(size = n_samples)
     # Simulate survival and censoring times
@@ -209,7 +211,11 @@ def simulation(beta_features, treatment_effect, n_samples, independent = True, s
     else:
         C = scale_C_indep * (-np.log(1 - V) / np.exp(marker))**(1 / shape_C)
 
-    
+    # Remove sample has survival time is zero
+    mask = (T > 0) & (C > 0)
+    X = X[mask]
+    T = T[mask]
+    C = C[mask]
     # Build final dataset
     data = pd.DataFrame(X)
     data['treatment'] = treatment
