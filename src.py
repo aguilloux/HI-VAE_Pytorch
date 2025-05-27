@@ -20,16 +20,10 @@ import utils.theta_estimation
 
 
 class HIVAE(nn.Module):
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition=[], feat_types_file=[], intervals=None, n_layers_surv_piecewise=2):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition=[], feat_types_dict=[], intervals=None, n_layers_surv_piecewise=2):
         
         super().__init__()
-        
-        # Load data types
-        #Read the types of the data from the files
-        with open(feat_types_file) as f:
-            self.feat_types_list = [{k: v for k, v in row.items()}
-            for row in csv.DictReader(f, skipinitialspace=True)]
-        
+        self.feat_types_list = feat_types_dict
 
         # Determine Y dimensionality
         if y_dim_partition:
@@ -267,10 +261,10 @@ class HIVAE_factorized(HIVAE):
         
     """
 
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise=2):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals, n_layers_surv_piecewise=2):
 
         # print(f'[*] Importing model: {model_name}')
-        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise)
+        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals, n_layers_surv_piecewise)
     
     def encode(self, X, tau):
         """
@@ -345,10 +339,10 @@ class HIVAE_inputDropout(HIVAE):
         
     """
 
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise=2):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals, n_layers_surv_piecewise=2):
 
         # print(f'[*] Importing model: {model_name}')
-        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_file, intervals, n_layers_surv_piecewise)
+        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals, n_layers_surv_piecewise)
     
     def encode(self, X, tau):
         """
