@@ -159,7 +159,8 @@ def visualize_general_perf(scores, metrics):
         metrics (list of str): List of column names (metrics) to plot.
     """
     num_metrics = len(metrics)
-    fig, axs = plt.subplots(1, num_metrics, figsize=(6 * num_metrics, 6))
+    n_learners = len(np.unique(scores['generator'].values))
+    fig, axs = plt.subplots(1, num_metrics, figsize=(3 * num_metrics * n_learners, 6))
 
     if num_metrics == 1:
         axs = [axs]  # ensure axs is iterable
