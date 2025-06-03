@@ -85,7 +85,7 @@ def run():
     n_trials = 3 # number of trials for each generator
     n_splits = 5 # number of splits for cross-validation
     n_generated_dataset = 1 # number of generated datasets per fold to compute the metric
-    name_config = "simu_N{}_nfeat{}_t{}_ntrials{}".format(n_samples, n_features_bytype, treatment_effect, n_trials)
+    name_config = "simu_{}_N{}_nfeat{}_t{}_ntrials{}".format(DEVICE, n_samples, n_features_bytype, treatment_effect, n_trials)
 
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
