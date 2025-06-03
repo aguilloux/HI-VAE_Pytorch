@@ -1,15 +1,10 @@
 # HI-VAE
 
-toto
-This repository contains the implementation of our Heterogeneous Incomplete Variational Autoendoder model (HI-VAE). It has been written in Python, using PyTorch.
-
-The details of this model are included in this [paper](https://arxiv.org/abs/1807.03653). Please cite it if you use this code for your own research.
-
-This implementation also extends HI-VAE to support survival data, enabling the model to handle time-to-event analysis with incomplete and heterogeneous data types.
+This repository contains the implementation of our Heterogeneous Variational Autoendoder model (surv_HI-VAE) supporting survival data, enabling the model to handle time-to-event analysis with incomplete and heterogeneous data types. It has been written in Python, using PyTorch.
 
 ## Database description
 
-There are three different datasets considered in the experiments (Wine, Adult and Default Credit). Each dataset has each own folder, containing:
+There are three different datasets considered in the experiments (XXXX). Each dataset has each own folder, containing:
 
 * **data.csv**: the dataset
 * **data_types.csv**: a csv containing the types of that particular dataset. Every line is a different attribute containing three paramenters:
@@ -47,7 +42,7 @@ To have an environment compatible with Synthcity,
 
 ```console
 $ cd HI-VAE
-$ conda create --name env_synthcity
+$ conda create --name env_synthcity python=3.12.9
 $ conda activate env_synthcity
 $ pip install synthcity
 $ pip install -r pip_requirements_synthcity.txt
