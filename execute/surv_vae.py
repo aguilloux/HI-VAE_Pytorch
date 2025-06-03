@@ -84,3 +84,12 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
     study.best_params  
 
     return study.best_params, study
+
+
+def get_n_hyperparameters():
+    """
+    Returns the number of hyperparameters for the SurVAE model.
+    """
+    model = type(Plugins().get("survae"))
+    hp_space = model.hyperparameter_space()
+    return len(hp_space)

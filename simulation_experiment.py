@@ -82,14 +82,15 @@ def run():
     df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
 
     # Parameters of the optuna study
-    n_trials = 3 # number of trials for each generator
+    # n_trials = 3 # number of trials for each generator
+    multiplier_trial = 1 # multiplier for the number of trials
     n_splits = 5 # number of splits for cross-validation
     n_generated_dataset = 1 # number of generated datasets per fold to compute the metric
-    name_config = "simu_{}_N{}_nfeat{}_t{}_ntrials{}".format(DEVICE, n_samples, n_features_bytype, treatment_effect, n_trials)
+    name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, treatment_effect)
 
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
-    generators_sel = ["Surv-GAN", "Surv-VAE"]
+    # generators_sel = ["Surv-GAN", "Surv-VAE"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                     "HI-VAE_piecewise" : surv_hivae,
                     "Surv-GAN" : surv_gan,
@@ -97,7 +98,9 @@ def run():
 
     best_params_dict, study_dict = {}, {}
     for generator_name in generators_sel:
-        db_file = "optuna_results/optuna_study_{}_{}.db".format(name_config, generator_name)
+        n_trials = int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters())
+        print("{} trials for {}...".format(n_trials, generator_name))
+        db_file = "optuna_results/optuna_study_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name)
         if os.path.exists(db_file):
             print("This optuna study already exists for {}. Please change the name of the study or remove the file to create a new one.".format(generator_name))
         else: 
@@ -123,7 +126,7 @@ def run():
                                                                                                 study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name))
                 best_params_dict[generator_name] = best_params
                 study_dict[generator_name] = study
-                with open("optuna_results/best_params_{}_{}.json".format(name_config, generator_name), "w") as f:
+                with open("optuna_results/best_params_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name), "w") as f:
                     json.dump(best_params, f)
             else: 
                 best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_control, 
@@ -136,7 +139,7 @@ def run():
                                                                                                 study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name))
                 best_params_dict[generator_name] = best_params
                 study_dict[generator_name] = study
-                with open("optuna_results/best_params_{}_{}.json".format(name_config, generator_name), "w") as f:
+                with open("optuna_results/best_params_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name), "w") as f:
                     json.dump(best_params, f)
 
     # RUN WITH DEFAULT PARAMETERS
@@ -163,7 +166,7 @@ def run():
     # RUN WITH BEST PARAMETERS
     best_params_dict = {}
     for generator_name in generators_sel:
-        with open("optuna_results/best_params_{}_{}.json".format(name_config, generator_name), "r") as f:
+        with open("optuna_results/best_params_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name), "r") as f:
             best_params_dict[generator_name] = json.load(f)
 
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
@@ -245,10 +248,10 @@ def run():
     # MONTE-CARLO EXPERIMENT
     treat_effects = np.arange(0., 1.1, 0.8)
     n_generated_dataset = 50
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance', 'Detection XGB', 'NNDR', 'K-map score']
-    n_MC_exp = 3
+    n_MC_exp = 2
 
     simu_num = []
     H0_coef = []
