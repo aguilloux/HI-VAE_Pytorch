@@ -26,8 +26,8 @@ def run():
     surv_type = "surv_weibull"
 
     control, treated, types = simulation(treatment_effect, n_samples, independent = False, surv_type = 'surv_piecewise', 
-                                        feature_types_list = ["pos", "real", "cat"], n_features_bytype = 4, 
-                                        n_active_features = 3 , p_treated = 0.5, shape_T = 2, shape_C = 2, scale_C = 6., 
+                                        feature_types_list = ["pos", "real", "cat"], n_features_bytype = n_features_bytype, 
+                                        n_active_features = n_active_features , p_treated = 0.0, shape_T = 2, shape_C = 2, scale_C = 6., 
                                         scale_C_indep = 4.5, data_types_create = True, seed=0)
     control = control.drop(columns='treatment')
     treated = treated.drop(columns='treatment')
@@ -37,6 +37,8 @@ def run():
 
     # Save the data
     dataset_name = "Simulations"
+    if not os.path.exists("./dataset/" + dataset_name):
+        os.makedirs("./dataset/" + dataset_name)
     data_file_control= "./dataset/" + dataset_name + "/data_control.csv"
     feat_types_file_control = "./dataset/" + dataset_name + "/data_types_control.csv"
     data_file_treated= "./dataset/" + dataset_name + "/data_treated.csv"
@@ -238,7 +240,6 @@ def run():
     plt.savefig("./dataset/" + dataset_name + "/hyperopt_independent_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + ".jpeg")
 
     # MONTE-CARLO EXPERIMENT
-    dataset_name = "Simulations"
     treat_effects = np.arange(0., 1.1, 0.8)
     n_generated_dataset = 50
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
