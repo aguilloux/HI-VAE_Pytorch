@@ -17,13 +17,15 @@ import os
 import json
 from utils.metrics import fit_cox_model, general_metrics
 
+from synthcity.utils.constants import DEVICE
+print('Device :', DEVICE)
+
 def run():
     # Simulate the initial data
     n_samples = 600
     n_features_bytype = 4
     n_active_features = 3 
     treatment_effect = 0.
-    surv_type = "surv_weibull"
 
     control, treated, types = simulation(treatment_effect, n_samples, independent = False, surv_type = 'surv_piecewise', 
                                         feature_types_list = ["pos", "real", "cat"], n_features_bytype = n_features_bytype, 
@@ -80,10 +82,10 @@ def run():
     df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
 
     # Parameters of the optuna study
-    name_config = "simu_N{}_nfeat{}_t{}_{}".format(n_samples, n_features_bytype, treatment_effect, surv_type)
-    n_trials = 5 # number of trials for each generator
+    n_trials = 3 # number of trials for each generator
     n_splits = 5 # number of splits for cross-validation
-    n_generated_dataset = 50 # number of generated datasets per fold to compute the metric
+    n_generated_dataset = 1 # number of generated datasets per fold to compute the metric
+    name_config = "simu_N{}_nfeat{}_t{}_ntrials{}".format(n_samples, n_features_bytype, treatment_effect, n_trials)
 
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
@@ -140,8 +142,8 @@ def run():
     # RUN WITH DEFAULT PARAMETERS
     # the datasets used for training is data_init_control
     n_generated_dataset = 50
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
     data_gen_control_dict = {}
     for generator_name in generators_sel:
         print("=" * 100)
