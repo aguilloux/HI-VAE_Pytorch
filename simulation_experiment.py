@@ -122,7 +122,7 @@ def run():
                                                                                                 n_trials=n_trials, 
                                                                                                 columns=fnames,
                                                                                                 epochs=1000,
-                                                                                                study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name))
+                                                                                                study_name="optuna_results/optuna_study_{}_ntrials{}_{}".format(name_config, n_trials, generator_name))
                 best_params_dict[generator_name] = best_params
                 study_dict[generator_name] = study
                 with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "w") as f:
