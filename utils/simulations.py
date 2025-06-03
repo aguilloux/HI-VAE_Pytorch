@@ -112,7 +112,7 @@ def compute_logrank_test(control, treat):
 
 def simulation(treatment_effect, n_samples, independent = True, surv_type = 'surv_piecewise', 
                feature_types_list = ["pos", "real", "cat"], n_features_bytype = 4, n_active_features = 3 , p_treated = 0.5, 
-               shape_T = 2, shape_C = 2, scale_C = 6., scale_C_indep = 2.5, data_types_create = True, seed=0):
+               shape_T = 2, shape_C = 2, scale_C = 6., scale_C_indep = 4.5, data_types_create = True, seed=0):
     """
     Simulate a survival dataset with structured covariates and treatment effect.
 
@@ -204,9 +204,9 @@ def simulation(treatment_effect, n_samples, independent = True, surv_type = 'sur
     # Simulate survival and censoring times
     T = (-np.log(1 - U) / np.exp(marker))**(1 / shape_T)
     if independent:
-        C = scale_C * (-np.log(1 - V))**(1 / shape_C)
+        C = scale_C_indep * (-np.log(1 - V))**(1 / shape_C)
     else:
-        C = scale_C_indep * (-np.log(1 - V) / np.exp(marker))**(1 / shape_C)
+        C = scale_C * (-np.log(1 - V) / np.exp(marker))**(1 / shape_C)
 
     # Remove sample has survival time is zero
     mask = (T > 0) & (C > 0)
