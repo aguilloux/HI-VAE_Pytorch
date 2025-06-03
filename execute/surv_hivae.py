@@ -212,11 +212,11 @@ def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,
 
     # Create PyTorch HVAE model
     model_loading = getattr(importlib.import_module("src"), model_name)
-    model_hivae = model_loading(input_dim=data.shape[1], 
-                            z_dim=dim_latent_z, 
-                            y_dim=dim_latent_y, 
+    model_hivae = model_loading(input_dim=data.shape[1],
+                            z_dim=dim_latent_z,
+                            y_dim=dim_latent_y,
                             s_dim=dim_latent_s, 
-                            y_dim_partition=None, 
+                            y_dim_partition=None,
                             feat_types_dict=feat_types_dict,
                             intervals=intervals,
                             n_layers_surv_piecewise=params["n_layers_surv_piecewise"]
@@ -296,15 +296,6 @@ def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, 
         intervals = get_intervals(df, params["n_intervals"])
         print(f"trial_{trial.number}")
         model_loading = getattr(importlib.import_module("src"), model_name)
-        model_hivae = model_loading(input_dim=data.shape[1], 
-                                    z_dim=params["z_dim"], 
-                                    y_dim=params["y_dim"], 
-                                    s_dim=params["s_dim"], 
-                                    y_dim_partition=None, 
-                                    feat_types_dict=feat_types_dict,
-                                    intervals=intervals, 
-                                    n_layers_surv_piecewise=params["n_layers_surv_piecewise"]
-        )
 
         scores = []
         try:
@@ -320,6 +311,14 @@ def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, 
                 # Train
                 batch_size = params["batch_size"]
                 batch_size = min(batch_size, data.shape[0])
+                model_hivae = model_loading(input_dim=data.shape[1],
+                            z_dim=params["z_dim"],
+                            y_dim=params["y_dim"],
+                            s_dim=params["s_dim"],
+                            y_dim_partition=None,
+                            feat_types_dict=feat_types_dict,
+                            intervals=intervals,
+                            n_layers_surv_piecewise=params["n_layers_surv_piecewise"])
                 model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
                 # Generate
                 est_data_gen_transformed = generate_from_HIVAE(model_hivae, test_data, test_miss_mask, test_true_miss_mask,

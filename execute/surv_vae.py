@@ -45,7 +45,6 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         hp_space = model_survae.hyperparameter_space()
         hp_space[0].high = 100  # speed up for now
         params = suggest_all(trial, hp_space)
-        model_survae_trial = model_survae(**params)
         ID = f"trial_{trial.number}"
         print(ID)
         scores = []
@@ -56,9 +55,10 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 train_data, test_data = df.iloc[train_index], df.iloc[test_index]
                 train_data_loader = SurvivalAnalysisDataLoader(train_data, target_column=target_column, time_to_event_column=time_to_event_column)
                 test_data_loader = SurvivalAnalysisDataLoader(test_data, target_column=target_column, time_to_event_column=time_to_event_column)
+                model_survae_trial = model_survae(**params)
                 model_survae_trial.fit(train_data_loader)
                 score_k = []
-                for j in range(n_generated_sample):
+                for j in range(n_generated_dataset):
                     gen_data = model_survae_trial.generate(count=test_data.shape[0])
                     clear_cache()
                     evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
@@ -77,19 +77,10 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
             print(params)
             raise optuna.TrialPruned()
         return np.mean(scores)
-        
+
     
     study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db')
     study.optimize(objective, n_trials=n_trials)
     study.best_params  
 
     return study.best_params, study
-
-
-
-
-
- 
-
-    
-
