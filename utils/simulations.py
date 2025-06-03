@@ -112,7 +112,7 @@ def compute_logrank_test(control, treat):
 
 def simulation(treatment_effect, n_samples, independent = True, surv_type = 'surv_piecewise', 
                feature_types_list = ["pos", "real", "cat"], n_features_bytype = 4, n_active_features = 3 , p_treated = 0.5, 
-               shape_T = 2, shape_C = 2, scale_C = 6., scale_C_indep = 2.5, data_types_create = True, seed=0):
+               shape_T = 2, shape_C = 2, scale_C = 6., scale_C_indep = 4.5, data_types_create = True, seed=0):
     """
     Simulate a survival dataset with structured covariates and treatment effect.
 
