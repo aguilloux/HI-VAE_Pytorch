@@ -47,7 +47,7 @@ def weights_sparse_exp(n_weigths: int = 100, nnz: int = 10, scale: float = 10.,
     Instance of weights for a model, given by a vector with
     exponentially decaying components: the j-th entry is given by
 
-    .. math: (-1)^j \exp(-j / scale)
+    .. math: (-1)^j exp(-j / scale)
 
     for 0 <= j <= nnz - 1. For j >= nnz, the entry is zero.
 
@@ -93,10 +93,10 @@ def compute_logrank_test(control, treat):
     Returns:
         float: Negative logarithm of the p-value from the log-rank test.
     """
-    surv_time_control = control['time'].values.astype(bool)
-    surv_event_control = control['censor'].values
-    surv_time_treat = treat['time'].values.astype(bool)
-    surv_event_treat = treat['censor'].values
+    surv_time_control = control['time'].values
+    surv_event_control = control['censor'].values.astype(bool)
+    surv_time_treat = treat['time'].values
+    surv_event_treat = treat['censor'].values.astype(bool)
 
     result = logrank_test(
         surv_time_control, surv_time_treat,
@@ -108,9 +108,9 @@ def compute_logrank_test(control, treat):
 
 
 
-def simulation(beta_features, treatment_effect , n_samples , surv_type = 'surv_piecewise', n_features_bytype = 4, 
-                n_features_multiplier = 3, nnz = 3 , p_treated = 0.5,
-                a_T = 2, a_C = 1, lamb_C = 2, data_types_create = True):
+def simulation(beta_features, treatment_effect , n_samples , independent = True, surv_type = 'surv_piecewise', n_features_bytype = 4, 
+                n_features_multiplier = 3, nnz = 3 , p_treated = 0.5,a_T=2,
+                a_C = 2., lamb_C = 6., lamb_C_indpt = 2.5, data_types_create = True):
     n_features = n_features_multiplier * n_features_bytype
     beta = np.insert(beta_features, 0, treatment_effect)
     X = features_normal_cov_toeplitz(n_samples,n_features)
@@ -122,7 +122,10 @@ def simulation(beta_features, treatment_effect , n_samples , surv_type = 'surv_p
     U = np.random.uniform(size = n_samples)
     V = np.random.uniform(size = n_samples)
     T = (- np.log(1-U) / np.exp(marker))**(1/a_T)
-    C = lamb_C * (- np.log(1-V))**(1/a_C)
+    if independent:
+        C = lamb_C * (- np.log(1-V))**(1/a_C)
+    else:
+        C = lamb_C_indpt * (- np.log(1-V) / np.exp(marker))**(1/a_C)
     data = pd.DataFrame(X)
     data['treatment'] = treatment
     data['time'] = np.min([T,C],axis=0)
@@ -146,6 +149,24 @@ def simulation(beta_features, treatment_effect , n_samples , surv_type = 'surv_p
         return(control,treated)
 
 
+def cpower(mc , mi , loghaz,alpha):
+    """
+    mc : number of survivors in control arm
+    mi : number of survivors in treated arm
+    loghaz : log of hazard ratios / treatment coefficient
+    alpha : level of test
+    """
+    ## Find its variance
+    v = 1/mc + 1/mi
+
+    ## Get same as /sasmacro/samsizc.sas if use 4/(mc+mi)
+
+    sd = np.sqrt(v)
+
+    z =  -norm.ppf(alpha/2)
+
+    Power = 1 - (norm.cdf(z - np.abs(loghaz)/sd) - norm.cdf(-z - np.abs(loghaz)/sd))
+    return(Power)
 
 
     
