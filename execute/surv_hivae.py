@@ -2,13 +2,18 @@ import numpy as np
 import torch
 import torch.optim as optim
 import time
-import matplotlib.pyplot as plt
 from utils import data_processing, visualization, statistic
 import time
 import pandas as pd
 import importlib
+import random
 import warnings
 warnings.filterwarnings("ignore")
+
+def set_seed(seed=1):
+    random.seed(seed)                            # Python built-in
+    np.random.seed(seed)                         # NumPy
+    torch.manual_seed(seed)                      # PyTorch (CPU)
 
 def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose = True):
 
@@ -29,6 +34,8 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
 
     # Number of batches
     n_train_samples = data_train.shape[0]
+    if n_train_samples < batch_size:
+        raise ValueError("Batch size must be less than the number of training samples")
     n_batches_train = int(np.floor(n_train_samples / batch_size))
     n_train_samples = n_batches_train * batch_size
 
@@ -102,6 +109,7 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
             q_params_list.append(vae_res["q_params"])
             log_p_x_total.append(vae_res["log_p_x"])
             log_p_x_missing_total.append(vae_res["log_p_x_missing"])
+
         #Concatenate samples in arrays
         s_total, z_total, y_total, est_data_train = statistic.samples_concatenation(samples_list)
         
@@ -130,9 +138,7 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
             if epoch % 100 == 0:
                 visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
     if verbose:
-        
         print("Training finished.")
-    
     
     return vae_model, loss_train, loss_val
 
@@ -141,20 +147,25 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
 
 def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample=None):
 
+    # Compute real missing mask
+    miss_mask = torch.multiply(miss_mask, true_miss_mask)
+
     if n_generated_sample is None:
         n_generated_sample = data.shape[0]
+        # data_ext = data
+        # miss_mask_ext = miss_mask
+        indices = torch.randint(0, data.shape[0], (n_generated_sample,))  # random indices with replacement
+        data_ext = data[indices]
+        miss_mask_ext = miss_mask[indices]
+    else:
+        indices = torch.randint(0, data.shape[0], (n_generated_sample,))  # random indices with replacement
+        data_ext = data[indices]
+        miss_mask_ext = miss_mask[indices]
+
     batch_size = n_generated_sample
 
     # Number of batches
     n_batches_generation = 1
-
-    # Compute real missing mask
-    miss_mask = torch.multiply(miss_mask, true_miss_mask)
-
-
-    indices = torch.randint(0, data.shape[0], (n_generated_sample,))  # random indices with replacement
-    data_ext = data[indices]
-    miss_mask_ext = miss_mask[indices]
 
     with torch.no_grad():
 
@@ -182,17 +193,21 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
 
         return est_data_gen_transformed
 
-def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  n_generated_dataset, n_generated_sample=None, verbose = True):
+def run(data_ext, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
+        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1}, verbose = True):
+
+    set_seed()
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
-    data, intervals = data_ext
+
+    data, intervals = data_ext    
     miss_mask = miss_mask
     true_miss_mask = true_miss_mask
-    dim_latent_z = 20
-    dim_latent_y = 15
-    dim_latent_s = 20
+    dim_latent_z = params["z_dim"]
+    dim_latent_y = params["y_dim"]
+    dim_latent_s = params["s_dim"]
     epochs = 500
-    lr = 1e-3
-    batch_size = 100
+    lr = params["lr"]
+    batch_size = params["batch_size"]
     batch_size = min(batch_size, data.shape[0]) # Adjust batch size if larger than dataset
 
     # Create PyTorch HVAE model
@@ -202,11 +217,118 @@ def run(data_ext, miss_mask, true_miss_mask, feat_types_file, feat_types_dict,  
                             y_dim=dim_latent_y, 
                             s_dim=dim_latent_s, 
                             y_dim_partition=None, 
-                            feat_types_file=feat_types_file,
-                            intervals=intervals)
+                            feat_types_dict=feat_types_dict,
+                            intervals=intervals,
+                            n_layers_surv_piecewise=params["n_layers_surv_piecewise"]
+                            )
     
-    model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs,verbose)
+    model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                    feat_types_dict, n_generated_dataset, n_generated_sample)
 
     return est_data_gen_transformed
+
+
+
+from synthcity.plugins.core.distribution import (
+    CategoricalDistribution,
+    Distribution,
+    FloatDistribution,
+    IntegerDistribution,
+)
+import optuna
+from synthcity.utils.optuna_sample import suggest_all
+from sklearn.model_selection import KFold
+from synthcity.utils.reproducibility import clear_cache, enable_reproducible_results
+from synthcity.metrics.eval import Metrics
+from synthcity.plugins.core.dataloader import SurvivalAnalysisDataLoader
+
+def hyperparameter_space(): 
+    """
+    Define the hyperparameter space for the model
+
+    Parameters to optimize: z_dim, y_dim, s_dim, batch_size, lr, n_layers_surv_piecewise
+    """
+    hp_space = [
+        CategoricalDistribution(name="n_layers_surv_piecewise", choices=[1, 2]),
+        CategoricalDistribution(name="lr", choices=[1e-3, 2e-4, 1e-4]),
+        CategoricalDistribution(name="batch_size", choices=[64, 100, 128, 256, 512]),
+        IntegerDistribution(name="z_dim", low=5, high=30, step=5),
+        IntegerDistribution(name="y_dim", low=5, high=30, step=5),
+        IntegerDistribution(name="s_dim", low=5, high=30, step=5),
+    ]
+    return hp_space
+
+
+def optuna_hyperparameter_search(data_encoded, data_initial, miss_mask, true_miss_mask, feat_types_dict, n_generated_sample, n_splits, n_trials, columns, study_name='optuna_study_surv_hivae'):
+   
+    model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
+
+    data, intervals = data_encoded
+    df = pd.DataFrame(data_initial.numpy(), columns=columns) # Preprocessed dataset
+    miss_mask = miss_mask
+    true_miss_mask = true_miss_mask
+    epochs = 500
+ 
+    def objective(trial: optuna.Trial):
+        hp_space = hyperparameter_space()
+        params = suggest_all(trial, hp_space) # dict of hyperparameters
+        ID = f"trial_{trial.number}"
+        print(ID)
+        model_loading = getattr(importlib.import_module("src"), model_name)
+        model_hivae = model_loading(input_dim=data.shape[1], 
+                                    z_dim=params["z_dim"], 
+                                    y_dim=params["y_dim"], 
+                                    s_dim=params["s_dim"], 
+                                    y_dim_partition=None, 
+                                    feat_types_dict=feat_types_dict,
+                                    intervals=intervals, 
+                                    n_layers_surv_piecewise=params["n_layers_surv_piecewise"]
+        )
+
+        scores = []
+        try:
+            # k-fold cross-validation
+            kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+            for train_index, test_index in kf.split(data):
+                train_data, test_data = data[train_index], data[test_index]
+                df_test_data = df.iloc[test_index]
+                test_data_loader = SurvivalAnalysisDataLoader(df_test_data, target_column = "censor", time_to_event_column = "time")
+                train_miss_mask, test_miss_mask = miss_mask[train_index], miss_mask[test_index]
+                train_true_miss_mask, test_true_miss_mask = true_miss_mask[train_index], true_miss_mask[test_index]
+                
+                # Train
+                batch_size = params["batch_size"]
+                batch_size = min(batch_size, data.shape[0])
+                model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
+                # Generate
+                est_data_gen_transformed = generate_from_HIVAE(model_hivae, test_data, test_miss_mask, test_true_miss_mask,
+                                                                feat_types_dict, n_generated_dataset=n_generated_sample, n_generated_sample=test_data.shape[0])
+
+                score_k = []
+                for j in range(n_generated_sample):
+                    df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
+                    gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column = "censor", time_to_event_column = "time")
+                    clear_cache()
+                    evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
+                                                    X_syn=gen_data, 
+                                                    reduction='mean', # default mean
+                                                    n_histogram_bins=10, # default 10
+                                                    metrics={'stats': ['survival_km_distance']},
+                                                    task_type='survival_analysis', 
+                                                    use_cache=True)
+                    score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+                    score_k.append(score_kj)
+                scores.append(np.mean(score_k))
+            print(f"Score: {np.mean(scores)}")
+        except Exception as e:  # invalid set of params
+            print(f"{type(e).__name__}: {e}")
+            print(params)
+            raise optuna.TrialPruned()
+        return np.mean(scores)
+        
+    study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db')
+    study.optimize(objective, n_trials=n_trials)
+    study.best_params  
+
+    return study.best_params, study

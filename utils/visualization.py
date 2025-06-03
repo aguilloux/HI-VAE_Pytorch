@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import torch
 sns.set(style="whitegrid", font="STIXGeneral", context="talk", palette="colorblind")
 
 from sksurv.nonparametric import kaplan_meier_estimator
@@ -81,7 +80,7 @@ def plot_data(data, feat_types_dict,feat_comparison_name=None):
 
         elif feature_type in ["surv", 'surv_weibull', 'surv_loglog', 'surv_piecewise']:
             
-            survival_time, censoring_indicator,treat  =  data[:, list(range((feat_idx), (feat_idx) + 2)) + [feat_comparison_index]].T
+            survival_time, censoring_indicator, treat  =  data[:, list(range((feat_idx), (feat_idx) + 2)) + [feat_comparison_index]].T
     
             time_S1, survival_prob_S1, conf_int = kaplan_meier_estimator((censoring_indicator[treat==1]==1), survival_time[treat==1], conf_type="log-log")
             time_C1, survival_prob_C1, conf_int = kaplan_meier_estimator((1-censoring_indicator[treat==1]==1), survival_time[treat==1], conf_type="log-log")
@@ -151,7 +150,7 @@ def print_loss(epoch, start_time, ELBO, avg_KL_s, avg_KL_z):
           % (epoch, time.time() - start_time, ELBO, avg_KL_z, avg_KL_s, ELBO + avg_KL_z + avg_KL_s))
 
 
-def visualize_perf(scores, metrics):
+def visualize_general_perf(scores, metrics):
     """
     Generate boxplots to visualize performance scores across different generators.
 
@@ -160,7 +159,8 @@ def visualize_perf(scores, metrics):
         metrics (list of str): List of column names (metrics) to plot.
     """
     num_metrics = len(metrics)
-    fig, axs = plt.subplots(1, num_metrics, figsize=(6 * num_metrics, 6))
+    n_learners = len(np.unique(scores['generator'].values))
+    fig, axs = plt.subplots(1, num_metrics, figsize=(3 * num_metrics * n_learners, 6))
 
     if num_metrics == 1:
         axs = [axs]  # ensure axs is iterable
@@ -183,5 +183,36 @@ def visualize_perf(scores, metrics):
             ax.legend(title='Maximize \u2191', title_fontsize=15)
         else:
             ax.legend(title='Minimize \u2193', title_fontsize=15)
+    plt.tight_layout(pad=3)
+    plt.show()
+
+def visualize_replicability_perf(scores):
+    """
+    Generate boxplots to visualize performance scores across different generators.
+
+    Args:
+        scores (DataFrame): Performance metrics for different synthetic data generators.
+    """
+    metric_names = scores.columns.values[2:]
+    num_metrics = len(metric_names)
+    fig, axs = plt.subplots(1, num_metrics, figsize=(6 * num_metrics, 6))
+
+    if num_metrics == 1:
+        axs = [axs]  # ensure axs is iterable
+
+    for i, ax in enumerate(axs):
+        # Format axis spines
+        metric_name = metric_names[i]
+        for spine in ax.spines.values():
+            spine.set_linewidth(2)
+            spine.set_edgecolor('black')
+
+        sns.lineplot(data=scores, x='Nb generated datasets', y=metric_name,
+                     hue="Generator", ax=ax, palette = 'colorblind')
+        ax.set_xlabel('Nb generated datasets', fontsize=20, fontweight="semibold")
+        ax.set_ylabel(metric_name, fontsize=20, fontweight="semibold")
+        ax.tick_params(axis='x', labelsize=18)
+        ax.tick_params(axis='y', labelsize=18)
+        ax.set_ylim(0, 1.05)
     plt.tight_layout(pad=3)
     plt.show()

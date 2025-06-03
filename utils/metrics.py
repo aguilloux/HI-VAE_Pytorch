@@ -31,10 +31,10 @@ def compute_logrank_test(control, treat):
     Returns:
         float: Negative logarithm of the p-value from the log-rank test.
     """
-    surv_time_control = control['time'].values.astype(bool)
-    surv_event_control = control['censor'].values
-    surv_time_treat = treat['time'].values.astype(bool)
-    surv_event_treat = treat['censor'].values
+    surv_time_control = control['time'].values
+    surv_event_control = control['censor'].values.astype(bool)
+    surv_time_treat = treat['time'].values
+    surv_event_treat = treat['censor'].values.astype(bool)
 
     result = logrank_test(
         surv_time_control, surv_time_treat,
@@ -189,17 +189,36 @@ def general_metrics(data_init, data_gen, generator):
     """
 
     synthcity_dataloader_init = SurvivalAnalysisDataLoader(data_init, target_column = "censor", time_to_event_column = "time")
+    metrics = {
+    'sanity': ['nearest_syn_neighbor_distance'],
+    'stats': ['jensenshannon_dist', 'ks_test', 'survival_km_distance'],
+    'performance': ['feat_rank_distance'],
+    'detection': ['detection_xgb'],
+    'privacy': ['k-map', 'distinct l-diversity', 'identifiability_score']
+}
     scores = []
     for idx, generated_data in enumerate(data_gen):
         enable_reproducible_results(idx)
         clear_cache()
         synthcity_dataloader_syn = SurvivalAnalysisDataLoader(generated_data, target_column = "censor", time_to_event_column = "time")
 
+        # evaluation = Metrics().evaluate(X_gt=synthcity_dataloader_init, # can be dataloaders or dataframes
+        #                                 X_syn=synthcity_dataloader_syn, 
+        #                                 reduction='mean', # default mean
+        #                                 n_histogram_bins=10, # default 10
+        #                                 metrics=None, # all metrics
+        #                                 task_type='survival_analysis', 
+        #                                 use_cache=True)
+        
         evaluation = Metrics().evaluate(X_gt=synthcity_dataloader_init, # can be dataloaders or dataframes
                                         X_syn=synthcity_dataloader_syn, 
                                         reduction='mean', # default mean
                                         n_histogram_bins=10, # default 10
-                                        metrics=None, # all metrics
+                                        metrics={'stats': ['jensenshannon_dist', 'ks_test', 'survival_km_distance'], 
+                                                 'detection': ['detection_xgb'],
+                                                 'sanity': ['nearest_syn_neighbor_distance'],
+                                                 'privacy': ['k-map']
+                                                }, # compute only selected metrics
                                         task_type='survival_analysis', 
                                         use_cache=True)
 

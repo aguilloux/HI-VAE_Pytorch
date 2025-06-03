@@ -42,7 +42,7 @@ def get_args(argv = None):
     
     return parser.parse_args(argv)
 
-def read_data(data_file, types_file, miss_file, true_miss_file):
+def read_data(data_file, types_file, miss_file, true_miss_file, surv_type=None):
     """
     Reads data from CSV files, handles missing values, and applies necessary transformations.
 
@@ -59,6 +59,9 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
     
     true_miss_file : str or None
         Path to the CSV file containing the true missing value mask, if available.
+
+    surv_type : str, default=None
+        Type identifier for the survival outcome.
 
     Returns:
     --------
@@ -81,6 +84,10 @@ def read_data(data_file, types_file, miss_file, true_miss_file):
     # Read types of data from types file
     with open(types_file) as f:
         types_dict = [{k: v for k, v in row.items()} for row in csv.DictReader(f, skipinitialspace=True)]
+    if surv_type is not None:
+        for i in range(len(types_dict)):
+            if types_dict[i]["name"] == "survcens":
+                types_dict[i]["type"] == surv_type
 
     # Read data from input file and convert to PyTorch tensor
     with open(data_file, 'r') as f:
@@ -321,7 +328,7 @@ def batch_normalization(batch_data_list, feat_types_list, miss_list):
 
             normalization_parameters.append((data_mean_log, data_var_log))
 
-        elif feature_type in ('surv_weibull','surv_loglog'):
+        elif feature_type in ('surv_weibull','surv_loglog', 'surv_piecewise'):
             # Min max normalization
             data_min = torch.min(observed_data[:, 0]) - 1e-3
             data_max = torch.max(observed_data[:, 0])
@@ -426,11 +433,11 @@ def survival_variables_transformation(data, types_dict):
 
     feat_idx = 0
     for d in types_dict:
-        if d['type'] in ['surv','surv_weibull','surv_loglog']:
+        if d['type'] in ['surv','surv_weibull','surv_loglog', 'surv_piecewise']:
             subset = output[:, feat_idx : feat_idx + 2]
             time_cens = (torch.min(subset, dim=1, keepdim=True))
-            output[:, feat_idx ] = time_cens.values.squeeze(1)
-            output[:, feat_idx  +1 ] = 1-time_cens.indices.squeeze(1)
+            output[:, feat_idx] = time_cens.values.squeeze(1)
+            output[:, feat_idx + 1] = 1 - time_cens.indices.squeeze(1)
             feat_idx += 2
         else:
             feat_idx += 1
