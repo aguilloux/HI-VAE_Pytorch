@@ -193,8 +193,8 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
 
         return est_data_gen_transformed
 
-def run(data_ext, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
-        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1}, verbose = True):
+def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
+        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}, epochs = 1000, verbose = True):
 
     set_seed()
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
@@ -205,7 +205,6 @@ def run(data_ext, miss_mask, true_miss_mask, feat_types_dict,  n_generated_datas
     dim_latent_z = params["z_dim"]
     dim_latent_y = params["y_dim"]
     dim_latent_s = params["s_dim"]
-    epochs = 500
     lr = params["lr"]
     batch_size = params["batch_size"]
     batch_size = min(batch_size, data.shape[0]) # Adjust batch size if larger than dataset
@@ -303,10 +302,10 @@ def optuna_hyperparameter_search(data_encoded, data_initial, miss_mask, true_mis
                 model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
                 # Generate
                 est_data_gen_transformed = generate_from_HIVAE(model_hivae, test_data, test_miss_mask, test_true_miss_mask,
-                                                                feat_types_dict, n_generated_dataset=n_generated_sample, n_generated_sample=test_data.shape[0])
+                                                                feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=test_data.shape[0])
 
                 score_k = []
-                for j in range(n_generated_sample):
+                for j in range(n_generated_dataset):
                     df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
                     gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column = "censor", time_to_event_column = "time")
                     clear_cache()

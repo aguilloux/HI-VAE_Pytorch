@@ -8,7 +8,7 @@ from sklearn.model_selection import KFold
 import numpy as np
 import optuna
 
-def run(data, columns, target_column, time_to_event_column, n_generated_sample, params=None):
+def run(data, columns, target_column, time_to_event_column, n_generated_dataset, params=None):
     """
     Use a VAE for tabular data generation
     """
@@ -28,7 +28,7 @@ def run(data, columns, target_column, time_to_event_column, n_generated_sample, 
     
     # Generate
     est_data_gen_transformed_survae = []
-    for j in range(n_generated_sample):
+    for j in range(n_generated_dataset):
         out = model_survae.generate(count=data.shape[0])
         est_data_gen_transformed_survae.append(out)
 
@@ -36,7 +36,7 @@ def run(data, columns, target_column, time_to_event_column, n_generated_sample, 
 
 
 
-def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_sample, n_splits, n_trials, study_name='optuna_study_survae'):
+def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_survae'):
     
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
  

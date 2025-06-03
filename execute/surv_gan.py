@@ -8,7 +8,7 @@ from sklearn.model_selection import KFold
 import numpy as np
 import optuna
 
-def run(data, columns, target_column, time_to_event_column, n_generated_sample, params=None):
+def run(data, columns, target_column, time_to_event_column, n_generated_dataset, params=None):
     """
     Use a conditional GAN for survival data generation
     """
@@ -31,7 +31,7 @@ def run(data, columns, target_column, time_to_event_column, n_generated_sample, 
     # Generate
     cond_gen = data[[target_column]]
     est_data_gen_transformed_survgan = []
-    for j in range(n_generated_sample):
+    for j in range(n_generated_dataset):
         out = model_survgan.generate(count=data.shape[0], cond=cond_gen)
         est_data_gen_transformed_survgan.append(out)
 
@@ -39,7 +39,7 @@ def run(data, columns, target_column, time_to_event_column, n_generated_sample, 
     
 
 
-def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_sample, n_splits, n_trials, study_name='optuna_study_surv_gan'):
+def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_surv_gan'):
     
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
  
@@ -64,7 +64,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 # Generate
                 cond_gen = test_data[[target_column]]
                 score_k = []
-                for j in range(n_generated_sample):
+                for j in range(n_generated_dataset):
                     gen_data = model_trial.generate(count=test_data.shape[0], cond=cond_gen)
                     clear_cache()
                     evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
