@@ -27,7 +27,7 @@ def run():
 
     control, treated, types = simulation(treatment_effect, n_samples, independent = False, surv_type = 'surv_piecewise', 
                                         feature_types_list = ["pos", "real", "cat"], n_features_bytype = n_features_bytype, 
-                                        n_active_features = n_active_features , p_treated = 0.0, shape_T = 2, shape_C = 2, scale_C = 6., 
+                                        n_active_features = n_active_features , p_treated = 0.5, shape_T = 2, shape_C = 2, scale_C = 6., 
                                         scale_C_indep = 4.5, data_types_create = True, seed=0)
     control = control.drop(columns='treatment')
     treated = treated.drop(columns='treatment')
