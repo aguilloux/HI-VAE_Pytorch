@@ -99,7 +99,7 @@ def run():
     for generator_name in generators_sel:
         db_file = "optuna_results/optuna_study_{}_{}.db".format(name_config, generator_name)
         if os.path.exists(db_file):
-            print("This optuna study already exists. Please change the name of the study or remove the file to create a new one.")
+            print("This optuna study already exists for {}. Please change the name of the study or remove the file to create a new one.".format(generator_name))
         else: 
             print("Creating new optuna study for {}...".format(generator_name))
             if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
