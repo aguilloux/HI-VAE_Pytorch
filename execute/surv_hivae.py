@@ -60,6 +60,12 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
     loss_val, error_observed_val, error_missing_val = [], [], []
 
     rng = np.random.default_rng(seed=42)
+    # Setting for early stopping
+    best_val_loss = float('inf')
+    patience = 5
+    counter = 0
+    delta = 1e-2
+    min_improvement_ratio = 5e-3
     for epoch in range(epochs):
         avg_loss, avg_KL_s, avg_KL_z = 0.0, 0.0, 0.0
         avg_loss_val, avg_KL_s_val, avg_KL_z_val = 0.0, 0.0, 0.0
@@ -137,6 +143,21 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
         if verbose:
             if epoch % 100 == 0:
                 visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
+
+        if best_val_loss == float('inf'):
+            best_val_loss = avg_loss_val
+            continue
+
+        ratio = abs(best_val_loss - avg_loss_val) / abs(best_val_loss)
+
+        if ratio > min_improvement_ratio:
+            best_val_loss = avg_loss_val
+            counter = 0
+        else:
+            counter += 1
+            if counter >= patience:
+                print(f"Early stopping at epoch {epoch} (no ratio improvement)")
+                break
     if verbose:
         print("Training finished.")
     
