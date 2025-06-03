@@ -82,8 +82,7 @@ def run():
     df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
 
     # Parameters of the optuna study
-    # n_trials = 3 # number of trials for each generator
-    multiplier_trial = 1 # multiplier for the number of trials
+    multiplier_trial = 10 # multiplier for the number of trials
     n_splits = 5 # number of splits for cross-validation
     n_generated_dataset = 1 # number of generated datasets per fold to compute the metric
     name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, treatment_effect)
@@ -126,7 +125,7 @@ def run():
                                                                                                 study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name))
                 best_params_dict[generator_name] = best_params
                 study_dict[generator_name] = study
-                with open("optuna_results/best_params_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name), "w") as f:
+                with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "w") as f:
                     json.dump(best_params, f)
             else: 
                 best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_control, 
@@ -139,7 +138,7 @@ def run():
                                                                                                 study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name))
                 best_params_dict[generator_name] = best_params
                 study_dict[generator_name] = study
-                with open("optuna_results/best_params_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name), "w") as f:
+                with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "w") as f:
                     json.dump(best_params, f)
 
     # RUN WITH DEFAULT PARAMETERS
@@ -166,7 +165,7 @@ def run():
     # RUN WITH BEST PARAMETERS
     best_params_dict = {}
     for generator_name in generators_sel:
-        with open("optuna_results/best_params_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name), "r") as f:
+        with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "r") as f:
             best_params_dict[generator_name] = json.load(f)
 
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
@@ -251,7 +250,7 @@ def run():
     generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance', 'Detection XGB', 'NNDR', 'K-map score']
-    n_MC_exp = 2
+    n_MC_exp = 100
 
     simu_num = []
     H0_coef = []
