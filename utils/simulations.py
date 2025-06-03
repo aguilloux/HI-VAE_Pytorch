@@ -204,9 +204,9 @@ def simulation(treatment_effect, n_samples, independent = True, surv_type = 'sur
     # Simulate survival and censoring times
     T = (-np.log(1 - U) / np.exp(marker))**(1 / shape_T)
     if independent:
-        C = scale_C * (-np.log(1 - V))**(1 / shape_C)
+        C = scale_C_indep * (-np.log(1 - V))**(1 / shape_C)
     else:
-        C = scale_C_indep * (-np.log(1 - V) / np.exp(marker))**(1 / shape_C)
+        C = scale_C * (-np.log(1 - V) / np.exp(marker))**(1 / shape_C)
 
     # Remove sample has survival time is zero
     mask = (T > 0) & (C > 0)
