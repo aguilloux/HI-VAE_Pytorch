@@ -1,15 +1,13 @@
 # HI-VAE
 
-toto
-This repository contains the implementation of our Heterogeneous Incomplete Variational Autoendoder model (HI-VAE). It has been written in Python, using PyTorch.
+This repository contains the implementation of our extension of Heterogeneous Incomplete Variational Autoendoder model (HI-VAE), supporting survival data, enabling the model to handle time-to-event analysis with incomplete and heterogeneous data types.. It has been written in Python, using PyTorch.
 
-The details of this model are included in this [paper](https://arxiv.org/abs/1807.03653). Please cite it if you use this code for your own research.
+The details of the original model are in [paper](https://arxiv.org/abs/1807.03653). Please cite it if you use this code for your own research.
 
-This implementation also extends HI-VAE to support survival data, enabling the model to handle time-to-event analysis with incomplete and heterogeneous data types.
 
 ## Database description
 
-There are three different datasets considered in the experiments (Wine, Adult and Default Credit). Each dataset has each own folder, containing:
+There are three different datasets considered in the experiments (XXX). Each dataset has each own folder, containing:
 
 * **data.csv**: the dataset
 * **data_types.csv**: a csv containing the types of that particular dataset. Every line is a different attribute containing three paramenters:
