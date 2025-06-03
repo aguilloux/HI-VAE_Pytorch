@@ -199,7 +199,6 @@ def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,
     set_seed()
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
 
-    data, intervals = data_ext    
     miss_mask = miss_mask
     true_miss_mask = true_miss_mask
     dim_latent_z = params["z_dim"]
@@ -208,6 +207,8 @@ def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,
     lr = params["lr"]
     batch_size = params["batch_size"]
     batch_size = min(batch_size, data.shape[0]) # Adjust batch size if larger than dataset
+    df = pd.DataFrame(data_initial.numpy(), columns=columns) # Preprocessed dataset
+    intervals = get_intervals(df, params["n_intervals"])
 
     # Create PyTorch HVAE model
     model_loading = getattr(importlib.import_module("src"), model_name)
@@ -242,38 +243,58 @@ from synthcity.utils.reproducibility import clear_cache, enable_reproducible_res
 from synthcity.metrics.eval import Metrics
 from synthcity.plugins.core.dataloader import SurvivalAnalysisDataLoader
 
-def hyperparameter_space(): 
+def hyperparameter_space(data, n_splits):
     """
     Define the hyperparameter space for the model
 
     Parameters to optimize: z_dim, y_dim, s_dim, batch_size, lr, n_layers_surv_piecewise
     """
+    n_samples = data.shape[0]
     hp_space = [
         CategoricalDistribution(name="n_layers_surv_piecewise", choices=[1, 2]),
         CategoricalDistribution(name="lr", choices=[1e-3, 2e-4, 1e-4]),
-        CategoricalDistribution(name="batch_size", choices=[64, 100, 128, 256, 512]),
+        CategoricalDistribution(name="batch_size", choices=get_batchsize(n_samples, n_splits)),
         IntegerDistribution(name="z_dim", low=5, high=30, step=5),
         IntegerDistribution(name="y_dim", low=5, high=30, step=5),
         IntegerDistribution(name="s_dim", low=5, high=30, step=5),
+        CategoricalDistribution(name="n_intervals", choices=[5, 10, 15, 20]),
     ]
     return hp_space
 
+def get_intervals(data, n_intervals):
+    """
+    Intervals
+    """
+    T_surv = torch.Tensor(data.time)
+    T_surv_norm = (T_surv - T_surv.min()) / (T_surv.max() - T_surv.min())
+    n_intervals = 10
+    T_intervals = torch.linspace(0., T_surv_norm.max(), n_intervals)
+    T_intervals = torch.cat([T_intervals, torch.tensor([2 * T_intervals[-1] - T_intervals[-2]])])
+    intervals = [(T_intervals[i].item(), T_intervals[i + 1].item()) for i in range(len(T_intervals) - 1)]
 
-def optuna_hyperparameter_search(data_encoded, data_initial, miss_mask, true_miss_mask, feat_types_dict, n_generated_sample, n_splits, n_trials, columns, study_name='optuna_study_surv_hivae'):
+    return intervals
+
+def get_batchsize(n_samples, n_splits):
+    """
+    Batch size
+    """
+    batch_size_ratio = [.25, .4, .6, .75]
+    batch_size = [int(ratio * n_samples * (n_splits - 1) / n_splits) for ratio in batch_size_ratio]
+
+    return batch_size
+
+def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, epochs = 1000, study_name='optuna_study_surv_hivae'):
    
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
-
-    data, intervals = data_encoded
     df = pd.DataFrame(data_initial.numpy(), columns=columns) # Preprocessed dataset
     miss_mask = miss_mask
     true_miss_mask = true_miss_mask
-    epochs = 500
  
     def objective(trial: optuna.Trial):
-        hp_space = hyperparameter_space()
+        hp_space = hyperparameter_space(df, n_splits)
         params = suggest_all(trial, hp_space) # dict of hyperparameters
-        ID = f"trial_{trial.number}"
-        print(ID)
+        intervals = get_intervals(df, params["n_intervals"])
+        print(f"trial_{trial.number}")
         model_loading = getattr(importlib.import_module("src"), model_name)
         model_hivae = model_loading(input_dim=data.shape[1], 
                                     z_dim=params["z_dim"], 

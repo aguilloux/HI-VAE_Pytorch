@@ -48,7 +48,6 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         hp_space = model.hyperparameter_space()
         hp_space[0].high = 3  # speed up for now
         params = suggest_all(trial, hp_space)
-        model_trial = model(**params)
         ID = f"trial_{trial.number}"
         print(ID)
         scores = []
@@ -60,6 +59,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 train_data_loader = SurvivalAnalysisDataLoader(train_data, target_column=target_column, time_to_event_column=time_to_event_column)
                 test_data_loader = SurvivalAnalysisDataLoader(test_data, target_column=target_column, time_to_event_column=time_to_event_column)
                 cond = train_data[[target_column]]
+                model_trial = model(**params)
                 model_trial.fit(train_data_loader, cond=cond)
                 # Generate
                 cond_gen = test_data[[target_column]]
