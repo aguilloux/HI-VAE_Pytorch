@@ -86,7 +86,8 @@ def run():
     n_generated_dataset = 50 # number of generated datasets per fold to compute the metric
 
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
+    generators_sel = ["Surv-GAN", "Surv-VAE"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                     "HI-VAE_piecewise" : surv_hivae,
                     "Surv-GAN" : surv_gan,
