@@ -85,7 +85,7 @@ def run():
     multiplier_trial = 10 # multiplier for the number of trials
     n_splits = 5 # number of splits for cross-validation
     n_generated_dataset = 1 # number of generated datasets per fold to compute the metric
-    name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, treatment_effect)
+    name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect*10))
 
     generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
@@ -101,7 +101,7 @@ def run():
         print("{} trials for {}...".format(n_trials, generator_name))
         db_file = "optuna_results/optuna_study_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name)
         if os.path.exists(db_file):
-            print("This optuna study already exists for {}. Please change the name of the study or remove the file to create a new one.".format(generator_name))
+            print("This optuna study ({}) already exists for {}. Please change the name of the study or remove the file to create a new one.".format(db_file, generator_name))
         else: 
             print("Creating new optuna study for {}...".format(generator_name))
             if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
@@ -135,7 +135,7 @@ def run():
                                                                                                 n_generated_dataset=n_generated_dataset, 
                                                                                                 n_splits=n_splits,
                                                                                                 n_trials=n_trials, 
-                                                                                                study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name))
+                                                                                                study_name="optuna_results/optuna_study_{}_ntrials{}_{}".format(name_config, n_trials, generator_name))
                 best_params_dict[generator_name] = best_params
                 study_dict[generator_name] = study
                 with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "w") as f:
