@@ -20,7 +20,7 @@ import utils.theta_estimation
 
 
 class HIVAE(nn.Module):
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition=[], feat_types_dict=[], intervals=None, n_layers_surv_piecewise=2):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition=[], feat_types_dict=[], intervals_surv_piecewise=None, n_layers_surv_piecewise=2):
         
         super().__init__()
         self.feat_types_list = feat_types_dict
@@ -62,7 +62,7 @@ class HIVAE(nn.Module):
                 self.theta_layer["feat_" + str(i)] = {'theta' : nn.Linear(feat_y_dim + s_dim, 4, bias=False)}
 
             elif feat['type'] in ['surv_piecewise']:
-                n_intervals = len(intervals)
+                n_intervals = len(intervals_surv_piecewise)
                 if n_layers_surv_piecewise == 2:
                     self.theta_layer["feat_" + str(i)] = {'theta_T' :   nn.Sequential(
                                                                         nn.Linear(feat_y_dim + s_dim, out_features=20, bias=False),
@@ -74,11 +74,11 @@ class HIVAE(nn.Module):
                                                                         nn.ReLU(),
                                                                         nn.Linear(in_features=20, out_features=n_intervals, bias=False)
                                                                         ),
-                                                        'intervals' : intervals}
+                                                        'intervals' : intervals_surv_piecewise}
                 else:
                     self.theta_layer["feat_" + str(i)] = {'theta_T' : nn.Linear(feat_y_dim + s_dim, n_intervals, bias=False),
                                                         'theta_C' : nn.Linear(feat_y_dim + s_dim, n_intervals, bias=False),
-                                                        'intervals' : intervals}
+                                                        'intervals' : intervals_surv_piecewise}
 
 
             elif feat['type'] in ['count']:
@@ -261,10 +261,10 @@ class HIVAE_factorized(HIVAE):
         
     """
 
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals, n_layers_surv_piecewise=2):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals_surv_piecewise, n_layers_surv_piecewise=2):
 
         # print(f'[*] Importing model: {model_name}')
-        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals, n_layers_surv_piecewise)
+        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals_surv_piecewise, n_layers_surv_piecewise)
     
     def encode(self, X, tau):
         """
@@ -339,10 +339,10 @@ class HIVAE_inputDropout(HIVAE):
         
     """
 
-    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals, n_layers_surv_piecewise=2):
+    def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals_surv_piecewise, n_layers_surv_piecewise=2):
 
         # print(f'[*] Importing model: {model_name}')
-        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals, n_layers_surv_piecewise)
+        super().__init__(input_dim, z_dim, s_dim, y_dim, y_dim_partition, feat_types_dict, intervals_surv_piecewise, n_layers_surv_piecewise)
     
     def encode(self, X, tau):
         """

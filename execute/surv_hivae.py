@@ -62,9 +62,8 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
     rng = np.random.default_rng(seed=42)
     # Setting for early stopping
     best_val_loss = float('inf')
-    patience = 5
+    patience = 50
     counter = 0
-    delta = 1e-2
     min_improvement_ratio = 5e-3
     for epoch in range(epochs):
         avg_loss, avg_KL_s, avg_KL_z = 0.0, 0.0, 0.0
@@ -229,7 +228,13 @@ def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,
     batch_size = params["batch_size"]
     batch_size = min(batch_size, data.shape[0]) # Adjust batch size if larger than dataset
     df = pd.DataFrame(data_initial.numpy(), columns=columns) # Preprocessed dataset
-    intervals = get_intervals(df, params["n_intervals"])
+    if "n_intervals" in params:
+        # HI_VAE piecewise
+        intervals = get_intervals(df, params["n_intervals"])
+        n_layers = params["n_layers_surv_piecewise"]
+    else:
+        intervals = None
+        n_layers = None
 
     # Create PyTorch HVAE model
     model_loading = getattr(importlib.import_module("src"), model_name)
@@ -239,8 +244,8 @@ def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,
                             s_dim=dim_latent_s, 
                             y_dim_partition=None,
                             feat_types_dict=feat_types_dict,
-                            intervals=intervals,
-                            n_layers_surv_piecewise=params["n_layers_surv_piecewise"]
+                            intervals_surv_piecewise=intervals,
+                            n_layers_surv_piecewise=n_layers
                             )
     
     model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
@@ -264,7 +269,7 @@ from synthcity.utils.reproducibility import clear_cache, enable_reproducible_res
 from synthcity.metrics.eval import Metrics
 from synthcity.plugins.core.dataloader import SurvivalAnalysisDataLoader
 
-def hyperparameter_space(data, n_splits):
+def hyperparameter_space(data, n_splits, generator_name):
     """
     Define the hyperparameter space for the model
 
@@ -272,14 +277,16 @@ def hyperparameter_space(data, n_splits):
     """
     n_samples = data.shape[0]
     hp_space = [
-        CategoricalDistribution(name="n_layers_surv_piecewise", choices=[1, 2]),
         CategoricalDistribution(name="lr", choices=[1e-3, 2e-4, 1e-4]),
         CategoricalDistribution(name="batch_size", choices=get_batchsize(n_samples, n_splits)),
         IntegerDistribution(name="z_dim", low=5, high=30, step=5),
         IntegerDistribution(name="y_dim", low=5, high=30, step=5),
         IntegerDistribution(name="s_dim", low=5, high=30, step=5),
-        CategoricalDistribution(name="n_intervals", choices=[5, 10, 15, 20]),
     ]
+    if generator_name in ["HI-VAE_piecewise"]:
+       hp_space.append(CategoricalDistribution(name="n_layers_surv_piecewise", choices=[1, 2]))
+       hp_space.append(CategoricalDistribution(name="n_intervals", choices=[5, 10, 15, 20]))
+
     return hp_space
 
 def get_intervals(data, n_intervals):
@@ -304,7 +311,7 @@ def get_batchsize(n_samples, n_splits):
 
     return batch_size
 
-def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, epochs = 1000, study_name='optuna_study_surv_hivae'):
+def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, study_name='optuna_study_surv_hivae'):
    
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
     df = pd.DataFrame(data_initial.numpy(), columns=columns) # Preprocessed dataset
@@ -312,9 +319,14 @@ def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, 
     true_miss_mask = true_miss_mask
  
     def objective(trial: optuna.Trial):
-        hp_space = hyperparameter_space(df, n_splits)
+        hp_space = hyperparameter_space(df, n_splits, generator_name)
         params = suggest_all(trial, hp_space) # dict of hyperparameters
-        intervals = get_intervals(df, params["n_intervals"])
+        if generator_name in ["HI-VAE_piecewise"]:
+            intervals = get_intervals(df, params["n_intervals"])
+            n_layers = params["n_layers_surv_piecewise"]
+        else:
+            intervals = None
+            n_layers = None
         print(f"trial_{trial.number}")
         model_loading = getattr(importlib.import_module("src"), model_name)
 
@@ -338,8 +350,8 @@ def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, 
                             s_dim=params["s_dim"],
                             y_dim_partition=None,
                             feat_types_dict=feat_types_dict,
-                            intervals=intervals,
-                            n_layers_surv_piecewise=params["n_layers_surv_piecewise"])
+                            intervals_surv_piecewise=intervals,
+                            n_layers_surv_piecewise=n_layers)
                 model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
                 # Generate
                 est_data_gen_transformed = generate_from_HIVAE(model_hivae, test_data, test_miss_mask, test_true_miss_mask,
