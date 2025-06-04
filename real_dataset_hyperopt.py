@@ -45,12 +45,12 @@ def run(dataset_name):
     ## HYPER-PARAMETER OPTIMIZATION
     # Parameters of the optuna study
     name_config = dataset_name
-    n_trials = 2 # number of trials for each generator
+    multiplier_trial = 10 # multiplier for the number of trials
     n_splits = 5 # number of splits for cross-validation
-    n_generated_dataset = 50 # number of generated datasets per fold to compute the metric
+    n_generated_dataset = 1 # number of generated datasets per fold to compute the metric
 
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                     "HI-VAE_piecewise" : surv_hivae,
                     "Surv-GAN" : surv_gan,
@@ -59,9 +59,11 @@ def run(dataset_name):
 
     best_params_dict, study_dict = {}, {}
     for generator_name in generators_sel:
-        db_file = "optuna_results/optuna_study_{}_{}.db".format(name_config, generator_name)
+        n_trials = int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name))
+        print("{} trials for {}...".format(n_trials, generator_name))
+        db_file = "optuna_results/optuna_study_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name)
         if os.path.exists(db_file):
-            print("This optuna study already exists. Please change the name of the study or remove the file to create a new one.")
+            print("This optuna study ({}) already exists for {}. Please change the name of the study or remove the file to create a new one.".format(db_file, generator_name))
         else: 
             print("Creating new optuna study for {}...".format(generator_name))
             if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
@@ -83,10 +85,10 @@ def run(dataset_name):
                                                                                                 columns=fnames,
                                                                                                 generator_name=generator_name,
                                                                                                 epochs=1000,
-                                                                                                study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name))
+                                                                                                study_name="optuna_results/optuna_study_{}_ntrials{}_{}".format(name_config, n_trials, generator_name))
                 best_params_dict[generator_name] = best_params
                 study_dict[generator_name] = study
-                with open("optuna_results/best_params_{}_{}.json".format(name_config, generator_name), "w") as f:
+                with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "w") as f:
                     json.dump(best_params, f)
             else: 
                 best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_control, 
@@ -96,17 +98,17 @@ def run(dataset_name):
                                                                                                 n_generated_dataset=n_generated_dataset, 
                                                                                                 n_splits=n_splits,
                                                                                                 n_trials=n_trials, 
-                                                                                                study_name="optuna_results/optuna_study_{}_{}".format(name_config, generator_name))
+                                                                                                study_name="optuna_results/optuna_study_{}_ntrials{}_{}".format(name_config, n_trials, generator_name))
                 best_params_dict[generator_name] = best_params
                 study_dict[generator_name] = study
-                with open("optuna_results/best_params_{}_{}.json".format(name_config, generator_name), "w") as f:
+                with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "w") as f:
                     json.dump(best_params, f)
 
     ## RUN WITH DEFAULT PARAMETERS
     # the datasets used for training is data_init_control
     n_generated_dataset = 50
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
     data_gen_control_dict = {}
     for generator_name in generators_sel:
         print("=" * 100)
@@ -126,7 +128,7 @@ def run(dataset_name):
     ## RUN WITH BEST PARAMETERS
     best_params_dict = {}
     for generator_name in generators_sel:
-        with open("optuna_results/best_params_{}_{}.json".format(name_config, generator_name), "r") as f:
+        with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "r") as f:
             best_params_dict[generator_name] = json.load(f)
 
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
@@ -194,6 +196,6 @@ def run(dataset_name):
 
 
 if __name__ == "__main__":
-    # for dataset_name in ["Aids", "SAS_1", "SAS_2", "SAS_3"]:
-    for dataset_name in ["SAS_2", "SAS_3"]:
+    for dataset_name in ["Aids", "SAS_1", "SAS_2", "SAS_3"]:
+    # for dataset_name in ["SAS_2", "SAS_3"]:
         run(dataset_name)

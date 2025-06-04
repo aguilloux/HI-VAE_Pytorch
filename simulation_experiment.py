@@ -97,7 +97,7 @@ def run():
 
     best_params_dict, study_dict = {}, {}
     for generator_name in generators_sel:
-        n_trials = int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters())
+        n_trials = int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name))
         print("{} trials for {}...".format(n_trials, generator_name))
         db_file = "optuna_results/optuna_study_{}_ntrials{}_{}.db".format(name_config, n_trials, generator_name)
         if os.path.exists(db_file):

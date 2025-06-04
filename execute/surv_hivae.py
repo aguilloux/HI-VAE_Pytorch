@@ -290,11 +290,11 @@ def hyperparameter_space(data, n_splits, generator_name):
 
     return hp_space
 
-def get_n_hyperparameters():
+def get_n_hyperparameters(generator_name):
     """
     Returns the number of hyperparameters for the SurVAE model.
     """
-    hp_space = hyperparameter_space(data=np.zeros(10), n_splits=5)  # Dummy data for space definition
+    hp_space = hyperparameter_space(data=np.zeros(10), n_splits=5, generator_name=generator_name)  # Dummy data for space definition
     return len(hp_space)
 
 def get_intervals(data, n_intervals):

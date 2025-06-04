@@ -90,7 +90,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
 
     return study.best_params, study
 
-def get_n_hyperparameters():
+def get_n_hyperparameters(generator_name):
     """
     Returns the number of hyperparameters for the SurvGAN model.
     """
