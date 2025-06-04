@@ -121,6 +121,7 @@ def run():
                                                                                                 n_splits=n_splits,
                                                                                                 n_trials=n_trials, 
                                                                                                 columns=fnames,
+                                                                                                generator_name=generator_name,
                                                                                                 epochs=1000,
                                                                                                 study_name="optuna_results/optuna_study_{}_ntrials{}_{}".format(name_config, n_trials, generator_name))
                 best_params_dict[generator_name] = best_params
