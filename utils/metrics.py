@@ -221,7 +221,6 @@ def general_metrics(data_init, data_gen, generator):
                                                 }, # compute only selected metrics
                                         task_type='survival_analysis', 
                                         use_cache=True)
-
         selected_metrics = evaluation.T[["stats.jensenshannon_dist.marginal",
                                           "stats.ks_test.marginal", 
                                           "stats.survival_km_distance.abs_optimism",
