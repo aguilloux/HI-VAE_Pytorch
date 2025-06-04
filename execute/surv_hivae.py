@@ -62,6 +62,7 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
     rng = np.random.default_rng(seed=42)
     # Setting for early stopping
     best_val_loss = float('inf')
+
     patience = 50
     counter = 0
     min_improvement_ratio = 5e-3
@@ -288,6 +289,13 @@ def hyperparameter_space(data, n_splits, generator_name):
        hp_space.append(CategoricalDistribution(name="n_intervals", choices=[5, 10, 15, 20]))
 
     return hp_space
+
+def get_n_hyperparameters():
+    """
+    Returns the number of hyperparameters for the SurVAE model.
+    """
+    hp_space = hyperparameter_space(data=np.zeros(10), n_splits=5)  # Dummy data for space definition
+    return len(hp_space)
 
 def get_intervals(data, n_intervals):
     """
