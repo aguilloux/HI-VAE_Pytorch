@@ -123,6 +123,7 @@ def read_data(data_file, types_file, miss_file, true_miss_file, surv_type=None):
     data_complete = []
     
     feat_idx = 0
+    feat_names = []
     for i, feature in enumerate(types_dict):
 
         if feature['type'] == 'cat':
@@ -135,6 +136,7 @@ def read_data(data_file, types_file, miss_file, true_miss_file, surv_type=None):
             one_hot = torch.zeros((data.shape[0], len(new_categories)))
             one_hot[torch.arange(data.shape[0]), mapped_categories] = 1
             data_complete.append(one_hot)
+            feat_names += [feature['name'] + "_" + str(j) for j in np.arange(len(new_categories))]
         
         elif feature['type'] == 'ordinal':
             # Thermometer encoding for ordinal data
@@ -149,6 +151,7 @@ def read_data(data_file, types_file, miss_file, true_miss_file, surv_type=None):
             thermometer = torch.cumsum(thermometer, dim=1)
 
             data_complete.append(thermometer[:, :-1])  # Exclude last column
+            feat_names += [feature['name'] + "_" + str(j) for j in np.arange(len(new_categories))]
 
         elif feature['type'] == 'count':
             # Shift zero-based counts if necessary
@@ -156,19 +159,23 @@ def read_data(data_file, types_file, miss_file, true_miss_file, surv_type=None):
             if torch.min(count_data) == 0:
                 count_data += 1
             data_complete.append(count_data)
+            feat_names += [feature['name']]
 
         elif feature['type'] in ['surv', 'surv_weibull', 'surv_loglog', 'surv_piecewise']:
             # Survival data take two columns
             data_complete.append(data[:, feat_idx : feat_idx + 2])
             feat_idx += 1
+            feat_names += ["time", "censor"]
         
         else:
             # Keep continuous data as is
             data_complete.append(data[:, feat_idx].unsqueeze(1))
+            feat_names += [feature['name']]
     
         feat_idx += 1
     # Concatenate processed features
     data = torch.cat(data_complete, dim=1)
+    df = pd.DataFrame(data, columns=feat_names)
 
     # Read missing mask file
     n_samples, n_variables = data.shape[0], len(types_dict)
@@ -181,7 +188,7 @@ def read_data(data_file, types_file, miss_file, true_miss_file, surv_type=None):
         if missing_positions.numel() != 0:
             miss_mask[missing_positions[:, 0] - 1, missing_positions[:, 1] - 1] = 0  # CSV indexes start at 1
     
-    return data, types_dict, miss_mask, true_miss_mask, n_samples
+    return df, types_dict, miss_mask, true_miss_mask, n_samples
 
 
 
@@ -394,7 +401,7 @@ def discrete_variables_transformation(data, types_dict):
         A tensor where categorical variables are mapped to their indices,
         and ordinal variables are transformed using sum-based encoding.
     """
-    
+
     ind_ini, output = 0, []
     for d in types_dict:
         ind_end = ind_ini + (int(d['nclass']) if d["type"] in ['cat', 'ordinal'] else int(d['dim']))

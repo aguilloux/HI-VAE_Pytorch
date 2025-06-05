@@ -56,14 +56,15 @@ def run():
 
 
     # Load and transform control data
-    data_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control, 
+    df_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control,
                                                                                                                 feat_types_file_control, 
                                                                                                                 miss_file, true_miss_file)
+    data_init_control_encoded = torch.from_numpy(df_init_control_encoded.values)
     data_init_control = data_processing.discrete_variables_transformation(data_init_control_encoded, feat_types_dict)
 
     # Load and transform treated data
-    data_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, 
-                                                            miss_file, true_miss_file)
+    df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file, true_miss_file)
+    data_init_treated_encoded = torch.from_numpy(df_init_treated_encoded.values)
     data_init_treated = data_processing.discrete_variables_transformation(data_init_treated_encoded, feat_types_dict)
 
     fnames = types['name'][:-1].tolist()
@@ -103,6 +104,7 @@ def run():
             print("This optuna study ({}) already exists for {}. We will use this existing file.".format(db_file, generator_name))
         else: 
             print("Creating new optuna study for {}...".format(generator_name))
+
         if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
             feat_types_dict_ext = feat_types_dict.copy()
             for i in range(len(feat_types_dict)):
@@ -111,8 +113,7 @@ def run():
                         feat_types_dict_ext[i]["type"] = 'surv_weibull'
                     else:
                         feat_types_dict_ext[i]["type"] = 'surv_piecewise'
-            best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_control_encoded, 
-                                                                                            data_init_control,
+            best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(df_init_control_encoded,
                                                                                             miss_mask_control, 
                                                                                             true_miss_mask_control,
                                                                                             feat_types_dict_ext, 
@@ -158,7 +159,7 @@ def run():
                         feat_types_dict_ext[i]["type"] = 'surv_weibull'
                     else:
                         feat_types_dict_ext[i]["type"] = 'surv_piecewise'
-            data_gen_control_dict[generator_name] = generators_dict[generator_name].run(data_init_control_encoded, data_init_control, fnames, miss_mask_control, true_miss_mask_control, feat_types_dict_ext, n_generated_dataset)
+            data_gen_control_dict[generator_name] = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control, true_miss_mask_control, feat_types_dict_ext, n_generated_dataset)
         else:
             data_gen_control_dict[generator_name] = generators_dict[generator_name].run(data_init_control, columns=fnames, target_column="censor", time_to_event_column="time", n_generated_dataset=n_generated_dataset)
 
@@ -182,9 +183,8 @@ def run():
                         feat_types_dict_ext[i]["type"] = 'surv_weibull'
                     else:
                         feat_types_dict_ext[i]["type"] = 'surv_piecewise'
-            data_gen_control_dict_best_params[generator_name] = generators_dict[generator_name].run(data_init_control_encoded, 
-                                                                                                    data_init_control, 
-                                                                                                    fnames, miss_mask_control, 
+            data_gen_control_dict_best_params[generator_name] = generators_dict[generator_name].run(df_init_control_encoded,
+                                                                                                    miss_mask_control,
                                                                                                     true_miss_mask_control, 
                                                                                                     feat_types_dict_ext, 
                                                                                                     n_generated_dataset, 
@@ -296,12 +296,15 @@ def run():
 
 
             # Load and transform control data
-            data_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control, 
+            df_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control,
                                                                                                                                 feat_types_file_control, 
                                                                                                                                 miss_file, true_miss_file)
+            data_init_control_encoded = torch.from_numpy(df_init_control_encoded.values)
             data_init_control = data_processing.discrete_variables_transformation(data_init_control_encoded, feat_types_dict)
 
-            data_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file, true_miss_file)
+            # Load and transform treated data
+            df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file, true_miss_file)
+            data_init_treated_encoded = torch.from_numpy(df_init_treated_encoded.values)
             data_init_treated = data_processing.discrete_variables_transformation(data_init_treated_encoded, feat_types_dict)
 
             # Format data in dataframe
@@ -339,8 +342,7 @@ def run():
                                 feat_types_dict_ext[i]["type"] = 'surv_weibull'
                             else:
                                 feat_types_dict_ext[i]["type"] = 'surv_piecewise'
-                    data_gen_control = generators_dict[generator_name].run(data_init_control_encoded, data_init_control, 
-                                                                        fnames, miss_mask_control, true_miss_mask_control, 
+                    data_gen_control = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control, true_miss_mask_control,
                                                                         feat_types_dict_ext, n_generated_dataset, 
                                                                         params=best_params)
                 else:

@@ -215,7 +215,7 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
 
         return est_data_gen_transformed
 
-def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
+def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
         params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}, epochs = 1000, verbose = True):
 
     set_seed()
@@ -228,8 +228,7 @@ def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,
     dim_latent_s = params["s_dim"]
     lr = params["lr"]
     batch_size = params["batch_size"]
-    batch_size = min(batch_size, data.shape[0]) # Adjust batch size if larger than dataset
-    df = pd.DataFrame(data_initial.numpy(), columns=columns) # Preprocessed dataset
+    batch_size = min(batch_size, df.shape[0]) # Adjust batch size if larger than dataset
     if "n_intervals" in params:
         # HI_VAE piecewise
         intervals = get_intervals(df, params["n_intervals"])
@@ -240,7 +239,7 @@ def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,
 
     # Create PyTorch HVAE model
     model_loading = getattr(importlib.import_module("src"), model_name)
-    model_hivae = model_loading(input_dim=data.shape[1],
+    model_hivae = model_loading(input_dim=df.shape[1],
                             z_dim=dim_latent_z,
                             y_dim=dim_latent_y,
                             s_dim=dim_latent_s, 
@@ -249,7 +248,7 @@ def run(data, data_initial, columns, miss_mask, true_miss_mask, feat_types_dict,
                             intervals_surv_piecewise=intervals,
                             n_layers_surv_piecewise=n_layers
                             )
-    
+    data = torch.from_numpy(df.values)
     model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                    feat_types_dict, n_generated_dataset, n_generated_sample)
@@ -320,10 +319,9 @@ def get_batchsize(n_samples, n_splits):
 
     return batch_size
 
-def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, study_name='optuna_study_surv_hivae'):
+def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, study_name='optuna_study_surv_hivae'):
    
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
-    df = pd.DataFrame(data_initial.numpy(), columns=columns) # Preprocessed dataset
     miss_mask = miss_mask
     true_miss_mask = true_miss_mask
  
@@ -338,7 +336,7 @@ def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, 
             n_layers = None
         print(f"trial_{trial.number}")
         model_loading = getattr(importlib.import_module("src"), model_name)
-
+        data = torch.from_numpy(df.values)
         scores = []
         try:
             # k-fold cross-validation
