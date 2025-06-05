@@ -196,6 +196,6 @@ def run(dataset_name):
 
 
 if __name__ == "__main__":
-    for dataset_name in ["Aids", "SAS_1", "SAS_2", "SAS_3"]:
-    # for dataset_name in ["SAS_2", "SAS_3"]:
+    # for dataset_name in ["Aids", "SAS_1", "SAS_2", "SAS_3"]:
+    for dataset_name in ["SAS_2", "SAS_3"]:
         run(dataset_name)
