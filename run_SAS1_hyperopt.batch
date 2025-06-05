@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --job-name=real_data_hyperopt           # A name for your job
+#SBATCH --cpus-per-gpu=16               # Set number of CPUs per GPU card (adjust if needed)
+#SBATCH --partition=gpu                 # Use the GPU partition
+#SBATCH --gres=gpu:a100:1               # Request 1 A100 GPU
+#SBATCH --mem=64G                       # Memory allocation, adjust based on your usage
+#SBATCH --time=2-00:00:00               # Adjust the time limit as needed (10 hours here)
+#SBATCH --output=%x_%j.out              # Output file named after job and ID
+
+echo "### Starting GPU job: $SLURM_JOB_NAME ###"
+cd ${SLURM_SUBMIT_DIR}
+
+module purge
+
+# Load your Python environment
+source /home/$USER/.bashrc
+source activate hivae  
+
+# Run your Python script
+python3 real_dataset_hyperopt.py "SAS_1"
