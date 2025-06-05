@@ -392,7 +392,7 @@ def optuna_hyperparameter_search(data, data_initial, miss_mask, true_miss_mask, 
     db_file = study_name + '.db'
     if os.path.exists(db_file):
         print("This optuna study ({}) already exists. We load the study from the existing file.".format(db_file))
-        study = optuna.load_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db')
+        study = optuna.load_study(study_name=study_name, storage='sqlite:///'+study_name+'.db')
     else: 
         study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db')
     study.optimize(objective, n_trials=n_trials)
