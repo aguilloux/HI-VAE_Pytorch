@@ -5,6 +5,7 @@ from utils import data_processing
 from execute import surv_hivae, surv_gan, surv_vae
 import json
 import os
+import sys
 import matplotlib.pyplot as plt
 from sksurv.nonparametric import kaplan_meier_estimator
 
@@ -196,6 +197,9 @@ def run(dataset_name):
 
 
 if __name__ == "__main__":
-    for dataset_name in ["Aids", "SAS_1", "SAS_2", "SAS_3"]:
+    # for dataset_name in ["Aids", "SAS_1", "SAS_2", "SAS_3"]:
     # for dataset_name in ["SAS_2", "SAS_3"]:
-        run(dataset_name)
+    #     run(dataset_name)
+
+    dataset_name = sys.argv[1]
+    run(dataset_name)

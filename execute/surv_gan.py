@@ -7,6 +7,7 @@ from synthcity.metrics.eval import Metrics
 from sklearn.model_selection import KFold
 import numpy as np
 import optuna
+import os
 
 def run(data, columns, target_column, time_to_event_column, n_generated_dataset, params=None):
     """
@@ -84,7 +85,12 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
             raise optuna.TrialPruned()
         return np.mean(scores)
         
-    study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db')
+    db_file = study_name + '.db'
+    if os.path.exists(db_file):
+        print("This optuna study ({}) already exists. We load the study from the existing file.".format(db_file))
+        study = optuna.load_study(study_name=study_name, storage='sqlite:///'+study_name+'.db')
+    else: 
+        study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db')
     study.optimize(objective, n_trials=n_trials)
     study.best_params  
 

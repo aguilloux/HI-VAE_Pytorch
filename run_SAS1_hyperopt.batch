@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=real_data_hyperopt           # A name for your job
+#SBATCH --job-name=SAS1_hyperopt           # A name for your job
 #SBATCH --cpus-per-gpu=16               # Set number of CPUs per GPU card (adjust if needed)
 #SBATCH --partition=gpu                 # Use the GPU partition
 #SBATCH --gres=gpu:a100:1               # Request 1 A100 GPU
@@ -17,4 +17,4 @@ source /home/$USER/.bashrc
 source activate hivae  
 
 # Run your Python script
-python3 real_dataset_hyperopt.py 
+python3 real_dataset_hyperopt.py "SAS_1"
