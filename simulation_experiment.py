@@ -26,10 +26,19 @@ def run():
     n_features_bytype = 4
     n_active_features = 3 
     treatment_effect = 0.
+    p_treated = 0.5
+    shape_T = 2.
+    shape_C = 2.
+    scale_C = 6.
+    scale_C_indep = 4.5
+    feature_types_list = ["pos", "real", "cat"]
+    independent = False
+    data_types_create = True
 
-    control, treated, types = simulation(treatment_effect, n_samples, independent = False, feature_types_list = ["pos", "real", "cat"],
-                                         n_features_bytype = n_features_bytype, n_active_features = n_active_features , p_treated = 0.5,
-                                         shape_T = 2, shape_C = 2, scale_C = 6., scale_C_indep = 4.5, data_types_create = True, seed=0)
+    control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
+                                         n_features_bytype, n_active_features, p_treated, shape_T,
+                                         shape_C, scale_C, scale_C_indep, data_types_create, seed=0)
+
     control = control.drop(columns='treatment')
     treated = treated.drop(columns='treatment')
 
@@ -57,7 +66,7 @@ def run():
 
     # Load and transform control data
     df_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control,
-                                                                                                                feat_types_file_control, 
+                                                                                                                feat_types_file_control,
                                                                                                                 miss_file, true_miss_file)
     data_init_control_encoded = torch.from_numpy(df_init_control_encoded.values)
     data_init_control = data_processing.discrete_variables_transformation(data_init_control_encoded, feat_types_dict)
@@ -277,9 +286,9 @@ def run():
                 print("Monte-Carlo experiment", m)
             # To make sure the difference between simulated dataset, increase seed value each time
             seed += 1
-            control, treated, types = simulation(treatment_effect, n_samples, independent = False, feature_types_list = ["pos", "real", "cat"],
-                                                 n_features_bytype = 4, n_active_features = 3 , p_treated = 0.5, shape_T = 2, shape_C = 2,
-                                                 scale_C = 6., scale_C_indep = 2.5, data_types_create = True, seed=seed)
+            control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
+                                                 n_features_bytype, n_active_features, p_treated, shape_T, shape_C,
+                                                 scale_C, scale_C_indep, data_types_create, seed=seed)
 
 
             control = control.drop(columns='treatment')

@@ -36,6 +36,14 @@ def run():
     n_features_bytype = 4
     n_active_features = 3 
     treatment_effect = 0.
+    p_treated = 0.5
+    shape_T = 2.
+    shape_C = 2.
+    scale_C = 6.
+    scale_C_indep = 4.5
+    feature_types_list = ["pos", "real", "cat"]
+    independent = False
+    data_types_create = True
 
     # MONTE-CARLO EXPERIMENT
     treat_effects = np.arange(0., 1.1, 0.8)
@@ -53,16 +61,15 @@ def run():
     seed = 0
     for t in np.arange(len(treat_effects)):
         treatment_effect = treat_effects[t]
-        coef_init_univ = true_univ_coef(treatment_effect, n_features_bytype = n_features_bytype,
-                                        n_active_features = n_active_features, feature_types_list = ["pos", "real", "cat"],
-                                        shape_T = 2, shape_C = 2, scale_C = 6., scale_C_indep = 2.5, seed=seed)
+        coef_init_univ = true_univ_coef(treatment_effect, independent, feature_types_list,
+                                         n_features_bytype, n_active_features, p_treated, shape_T,
+                                         shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
         for m in np.arange(n_MC_exp):
             # To make sure the difference between simulated dataset, increase seed value each time
             seed += 1
-            control, treated, types = simulation(treatment_effect, n_samples, independent = False, feature_types_list = ["pos", "real", "cat"],
-                                                    n_features_bytype = 4, n_active_features = 3 , p_treated = 0.5, shape_T = 2, shape_C = 2,
-                                                    scale_C = 6., scale_C_indep = 2.5, data_types_create = True, seed=seed)
-            
+            control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
+                                                 n_features_bytype, n_active_features, p_treated, shape_T,
+                                                 shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
             control = control.drop(columns='treatment')
             treated = treated.drop(columns='treatment')
             D_control.append(control['censor'].sum())
