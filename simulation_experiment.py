@@ -113,8 +113,7 @@ def run():
                         feat_types_dict_ext[i]["type"] = 'surv_weibull'
                     else:
                         feat_types_dict_ext[i]["type"] = 'surv_piecewise'
-            best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_control_encoded, 
-                                                                                            data_init_control,
+            best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(df_init_control_encoded,
                                                                                             miss_mask_control, 
                                                                                             true_miss_mask_control,
                                                                                             feat_types_dict_ext, 
