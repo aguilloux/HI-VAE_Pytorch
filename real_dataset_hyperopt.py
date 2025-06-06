@@ -161,7 +161,7 @@ def run(dataset_name):
                                                                                                     time_to_event_column="time", 
                                                                                                     n_generated_dataset=n_generated_dataset, 
                                                                                                     params=best_params)
-            
+
     # COMPARE THE RESULTS BETWEEN THE BEST PARAMS WITH DEFAULT ONES
     def kaplan_meier_estimation(surv_data, label=None, ax=None):
         surv_time  = surv_data['time'].values
@@ -174,6 +174,11 @@ def run(dataset_name):
     fig, axs = plt.subplots(1, 2, figsize=(20, 5))
     kaplan_meier_estimation(df_init_control, label="Initial Control Group", ax=axs[0])
     kaplan_meier_estimation(df_init_treated, label="Treatment Group", ax=axs[0])
+
+    sel_dataset_idx = 0
+    for i, generator_name in enumerate(generators_sel):
+        df_syn_sel = pd.DataFrame(data_gen_control_dict[generator_name][sel_dataset_idx].numpy(), columns=fnames)
+        kaplan_meier_estimation(df_syn_sel, label="Generated Control Group " + generator_name, ax=axs[0])
 
     axs[0].set_ylim(0, 1)
     axs[0].legend(fontsize=15)
@@ -196,11 +201,10 @@ def run(dataset_name):
     axs[1].set_title("Survival Curves with Confidence Intervals with best params", fontweight="bold")
     plt.savefig("./dataset/" + dataset_name + "/hyperopt.jpeg")
 
-
 if __name__ == "__main__":
-    # for dataset_name in ["Aids", "SAS_1", "SAS_2", "SAS_3"]:
+    for dataset_name in ["Aids", "SAS_1", "SAS_2", "SAS_3"]:
     # for dataset_name in ["SAS_2", "SAS_3"]:
-    #     run(dataset_name)
+        run(dataset_name)
 
-    dataset_name = sys.argv[1]
-    run(dataset_name)
+    # dataset_name = sys.argv[1]
+    # run(dataset_name)
