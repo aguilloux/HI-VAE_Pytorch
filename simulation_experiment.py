@@ -20,6 +20,26 @@ from utils.metrics import fit_cox_model, general_metrics
 from synthcity.utils.constants import DEVICE
 print('Device :', DEVICE)
 
+def true_univ_coef(treatment_effect, independent = True, feature_types_list = ["pos", "real", "cat"],
+                   n_features_bytype = 4, n_active_features = 3 , p_treated = 0.5, shape_T = 2, shape_C = 2,
+                   scale_C = 6., scale_C_indep = 2.5, data_types_create = True, seed=0):
+
+    # Compute univariate treatment effects
+    n_samples = 100000
+    seed = int(np.random.randint(1000, size = 1))
+    control, treated, types = simulation(treatment_effect, n_samples,
+                                         independent = independent, n_features_bytype  = n_features_bytype,
+                                         n_active_features = n_active_features,
+                                         feature_types_list = feature_types_list,
+                                         shape_T = shape_T , shape_C = shape_C,
+                                         scale_C = scale_C , scale_C_indep = scale_C_indep, seed=seed)
+
+    df_init = pd.concat([control, treated], ignore_index=True)
+    columns = ['time', 'censor', 'treatment']
+    coef_init = fit_cox_model(df_init, columns)[0]
+
+    return coef_init[0]
+
 def run():
     # Simulate the initial data
     n_samples = 600
@@ -255,7 +275,7 @@ def run():
     plt.savefig("./dataset/" + dataset_name + "/hyperopt_independent_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + ".jpeg")
 
     # MONTE-CARLO EXPERIMENT
-    treat_effects = np.arange(0., 1.1, 0.8)
+    treat_effects = np.arange(0., 1.1, 0.2)
     n_generated_dataset = 50
     generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
@@ -263,6 +283,9 @@ def run():
     n_MC_exp = 100
 
     simu_num = []
+    D_control = []
+    D_treated = []
+    coef_init_univ_list = []
     H0_coef = []
     log_p_value_init = []
     log_p_value_gen_dict = {}
@@ -280,6 +303,9 @@ def run():
     seed = 0
     for t in np.arange(len(treat_effects)):
         treatment_effect = treat_effects[t]
+        coef_init_univ = true_univ_coef(treatment_effect, independent, feature_types_list,
+                                         n_features_bytype, n_active_features, p_treated, shape_T,
+                                         shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
         print("Treatment_effect", treatment_effect)
         for m in np.arange(n_MC_exp):
             if m % 10 == 0:
@@ -341,6 +367,9 @@ def run():
             log_p_value_init += [p_value_init] * n_generated_dataset
             H0_coef += [treatment_effect] * n_generated_dataset
             simu_num += [t * n_MC_exp + m] * n_generated_dataset
+            D_control += [control['censor'].sum()] * n_generated_dataset
+            D_treated += [treated['censor'].sum()] * n_generated_dataset
+            coef_init_univ_list += [coef_init_univ] * n_generated_dataset
 
             for generator_name in generators_sel:
                 best_params = best_params_dict[generator_name]
@@ -385,7 +414,10 @@ def run():
                                                                         synthcity_metrics_res])
 
     # SAVE DATAFRAME
-    results = pd.DataFrame({'XP_num' : simu_num, 
+    results = pd.DataFrame({'XP_num' : simu_num,
+                            "D_control" : D_control,
+                            "D_treated" : D_treated,
+                            "H0_coef_univ" : coef_init_univ_list,
                             "H0_coef" : H0_coef,
                             "log_pvalue_init" : log_p_value_init, 
                             "est_cox_coef_init" : est_cox_coef_init,
@@ -398,7 +430,7 @@ def run():
         for metric in synthcity_metrics_sel:
             results[metric + "_" + generator_name] = synthcity_metrics_res_dict[generator_name][metric].values
 
-    results.to_csv("./dataset/" + dataset_name + "results_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + ".csv")
+    results.to_csv("./dataset/" + dataset_name + "/results_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + ".csv")
 
 
 if __name__ == "__main__":
