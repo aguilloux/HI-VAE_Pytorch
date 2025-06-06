@@ -278,8 +278,8 @@ def run():
         synthcity_metrics_res_dict[generator_name] = pd.DataFrame()
 
     seed = 0
-    for t in treat_effects:
-        treatment_effect = t
+    for t in np.arange(len(treat_effects)):
+        treatment_effect = treat_effects[t]
         print("Treatment_effect", treatment_effect)
         for m in np.arange(n_MC_exp):
             if m % 10 == 0:
@@ -336,11 +336,11 @@ def run():
 
             est_cox_coef_init += [coef_init[0]] * n_generated_dataset
             est_cox_coef_se_init += [se_init[0]] * n_generated_dataset
-            
+
             p_value_init = compute_logrank_test(df_init_control, df_init_treated)
             log_p_value_init += [p_value_init] * n_generated_dataset
             H0_coef += [treatment_effect] * n_generated_dataset
-            simu_num += [m] * n_generated_dataset
+            simu_num += [t * n_MC_exp + m] * n_generated_dataset
 
             for generator_name in generators_sel:
                 best_params = best_params_dict[generator_name]
