@@ -3,7 +3,7 @@
 #SBATCH --output=%x_%j.out 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --time=01:00:00
+#SBATCH --time=5-00:00:00
 #SBATCH --partition=cpu_devel  # or any low-cost CPU partition you have
 
 echo "### Starting GPU job: $SLURM_JOB_NAME ###"
