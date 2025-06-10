@@ -124,8 +124,10 @@ def run(treatment_effect):
         os.makedirs("./dataset/" + dataset_name_treatment)
 
     # Set a unique working directory for this job
-    work_dir = setup_unique_working_dir("parallel_runs")
-    print(f"Running in {work_dir}")
+    original_dir, work_dir = setup_unique_working_dir("parallel_runs")
+    os.chdir(work_dir)  # Switch to private work dir
+    print("Working directory:", work_dir)
+    print("Original directory:", original_dir)
     
     for m in np.arange(n_MC_exp):
         if m % 10 == 0:
@@ -140,10 +142,10 @@ def run(treatment_effect):
         control = control.drop(columns='treatment')
         treated = treated.drop(columns='treatment')
         
-        data_file_control = "./dataset/" + dataset_name_treatment + "/data_control.csv"
-        data_file_treated = "./dataset/" + dataset_name_treatment + "/data_treated.csv"
-        feat_types_file_control = "./dataset/" + dataset_name_treatment + "/data_types_control.csv"
-        feat_types_file_treated= "./dataset/" + dataset_name_treatment + "/data_types_treated.csv"
+        data_file_control = original_dir + "/dataset/" + dataset_name_treatment + "/data_control.csv"
+        data_file_treated = original_dir + "/dataset/" + dataset_name_treatment + "/data_treated.csv"
+        feat_types_file_control = original_dir + "/dataset/" + dataset_name_treatment + "/data_types_control.csv"
+        feat_types_file_treated= original_dir + "/dataset/" + dataset_name_treatment + "/data_types_treated.csv"
     
         control.to_csv(data_file_control, index=False , header=False)
         treated.to_csv(data_file_treated, index=False , header=False)
@@ -251,18 +253,20 @@ def run(treatment_effect):
         for metric in synthcity_metrics_sel:
             results[metric + "_" + generator_name] = synthcity_metrics_res_dict[generator_name][metric].values
 
-    results.to_csv("./dataset/" + dataset_name + "/results_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + "treat_effect_" + str(treatment_effect) + ".csv")
+    results.to_csv(original_dir + "/dataset/" + dataset_name + "/results_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + "treat_effect_" + str(treatment_effect) + ".csv")
+
 
 
 
 def setup_unique_working_dir(base_dir="experiments"):
+    original_dir = os.getcwd()  # Save original dir
     os.makedirs(base_dir, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     uid = uuid.uuid4().hex[:8]
     work_dir = os.path.join(base_dir, f"run_{timestamp}_{uid}")
     os.makedirs(work_dir, exist_ok=True)
-    os.chdir(work_dir)
-    return work_dir
+    # os.chdir(work_dir)  # Switch to private work dir
+    return original_dir, work_dir  # Return the original dir
 
 
 if __name__ == "__main__":
