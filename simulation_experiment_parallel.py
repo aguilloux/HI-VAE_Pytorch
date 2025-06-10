@@ -14,6 +14,8 @@ from execute import surv_hivae, surv_gan, surv_vae
 from sksurv.nonparametric import kaplan_meier_estimator
 
 import os
+import uuid
+import datetime
 import json
 import sys
 from utils.metrics import fit_cox_model, general_metrics
@@ -247,7 +249,22 @@ def run(treatment_effect):
     results.to_csv("./dataset/" + dataset_name + "/results_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + "treat_effect_" + str(treatment_effect) + ".csv")
 
 
+
+def setup_unique_working_dir(base_dir="experiments"):
+    os.makedirs(base_dir, exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    uid = uuid.uuid4().hex[:8]
+    work_dir = os.path.join(base_dir, f"run_{timestamp}_{uid}")
+    os.makedirs(work_dir, exist_ok=True)
+    os.chdir(work_dir)
+    return work_dir
+
+
 if __name__ == "__main__":
+    # Set a unique working directory for this job
+    work_dir = setup_unique_working_dir("parallel_runs")
+    print(f"Running in {work_dir}")
+
     treat_effects = np.arange(0., 1.1, 0.2)
     treatment_id = int(sys.argv[1])
     run(treatment_effect=treat_effects[treatment_id])
