@@ -117,6 +117,9 @@ def run(treatment_effect):
                                         n_features_bytype, n_active_features, p_treated, shape_T,
                                         shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
     print("Treatment_effect", treatment_effect)
+    dataset_name_treatment = dataset_name + "/Treat_effect_" + str(treatment_effect) 
+    if not os.path.exists("./dataset/" + dataset_name_treatment):
+        os.makedirs("./dataset/" + dataset_name_treatment)
     for m in np.arange(n_MC_exp):
         if m % 10 == 0:
             print("Monte-Carlo experiment", m)
@@ -130,10 +133,10 @@ def run(treatment_effect):
         control = control.drop(columns='treatment')
         treated = treated.drop(columns='treatment')
         
-        data_file_control = "./dataset/" + dataset_name + "/data_control.csv"
-        data_file_treated = "./dataset/" + dataset_name + "/data_treated.csv"
-        feat_types_file_control = "./dataset/" + dataset_name + "/data_types_control.csv"
-        feat_types_file_treated= "./dataset/" + dataset_name + "/data_types_treated.csv"
+        data_file_control = "./dataset/" + dataset_name_treatment + "/data_control.csv"
+        data_file_treated = "./dataset/" + dataset_name_treatment + "/data_treated.csv"
+        feat_types_file_control = "./dataset/" + dataset_name_treatment + "/data_types_control.csv"
+        feat_types_file_treated= "./dataset/" + dataset_name_treatment + "/data_types_treated.csv"
     
         control.to_csv(data_file_control, index=False , header=False)
         treated.to_csv(data_file_treated, index=False , header=False)
