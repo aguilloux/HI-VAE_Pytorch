@@ -84,7 +84,7 @@ def run(treatment_effect):
     best_params_dict = {}
     for generator_name in generators_sel:
         n_trials = int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name))
-        with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "r") as f:
+        with open("./optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "r") as f:
             best_params_dict[generator_name] = json.load(f)
 
     
@@ -264,7 +264,7 @@ if __name__ == "__main__":
     # Set a unique working directory for this job
     work_dir = setup_unique_working_dir("parallel_runs")
     print(f"Running in {work_dir}")
-
+    
     treat_effects = np.arange(0., 1.1, 0.2)
     treatment_id = int(sys.argv[1])
     run(treatment_effect=treat_effects[treatment_id])
