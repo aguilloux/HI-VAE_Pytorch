@@ -303,7 +303,6 @@ def get_intervals(data, n_intervals):
     """
     T_surv = torch.Tensor(data.time)
     T_surv_norm = (T_surv - T_surv.min()) / (T_surv.max() - T_surv.min())
-    n_intervals = 10
     T_intervals = torch.linspace(0., T_surv_norm.max(), n_intervals)
     T_intervals = torch.cat([T_intervals, torch.tensor([2 * T_intervals[-1] - T_intervals[-2]])])
     intervals = [(T_intervals[i].item(), T_intervals[i + 1].item()) for i in range(len(T_intervals) - 1)]
