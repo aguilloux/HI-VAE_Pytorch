@@ -5,6 +5,7 @@ from synthcity.utils.optuna_sample import suggest_all
 from synthcity.utils.reproducibility import clear_cache, enable_reproducible_results
 from synthcity.metrics.eval import Metrics
 from sklearn.model_selection import KFold
+from utils import metrics
 import numpy as np
 import optuna
 import os
@@ -40,7 +41,7 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
     
 
 
-def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_surv_gan'):
+def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_surv_gan', metric='survival_km_distance'):
     
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
  
@@ -67,15 +68,20 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 score_k = []
                 for j in range(n_generated_dataset):
                     gen_data = model_trial.generate(count=test_data.shape[0], cond=cond_gen)
-                    clear_cache()
-                    evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
-                                                    X_syn=gen_data, 
-                                                    reduction='mean', # default mean
-                                                    n_histogram_bins=10, # default 10
-                                                    metrics={'stats': ['survival_km_distance']},
-                                                    task_type='survival_analysis', 
-                                                    use_cache=True)
-                    score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+                    df_gen_data = gen_data.dataframe()
+                    if metric == 'log_rank_test':
+                        score_kj = metrics.compute_logrank_test(test_data, df_gen_data)
+                    else: # 'survival_km_distance'
+                        clear_cache()
+                        evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
+                                                        X_syn=gen_data, 
+                                                        reduction='mean', # default mean
+                                                        n_histogram_bins=10, # default 10
+                                                        n_folds=1,
+                                                        metrics={'stats': ['survival_km_distance']},
+                                                        task_type='survival_analysis', 
+                                                        use_cache=True)
+                        score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
                     score_k.append(score_kj)
                 scores.append(np.mean(score_k))
             print(f"Score: {np.mean(scores)}")

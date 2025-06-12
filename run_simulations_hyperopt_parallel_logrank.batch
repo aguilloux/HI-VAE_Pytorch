@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=survkm_hyperopt_parallel
+#SBATCH --job-name=logrank_hyperopt_parallel
 #SBATCH --output=logs/hyperopt_%A_%a.out
 #SBATCH --error=logs/hyperopt_%A_%a.err
 #SBATCH --array=0-3  # one task per generator
@@ -21,4 +21,4 @@ source activate hivae
 # Arguments
 GENERATOR_ID=${SLURM_ARRAY_TASK_ID}
 
-python3 simulation_hyperopt_parallel.py $GENERATOR_ID 
+python3 simulation_hyperopt_parallel_logrank.py $GENERATOR_ID 

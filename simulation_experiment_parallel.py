@@ -46,20 +46,22 @@ def true_univ_coef(treatment_effect, independent = True, feature_types_list = ["
 def run(treatment_effect):
     # Simulate the initial data
     n_samples = 600
-    n_features_bytype = 4
+    n_features_bytype = 6
     n_active_features = 3 
     treatment_effect_best_param = 0.
     p_treated = 0.5
     shape_T = 2.
     shape_C = 2.
-    scale_C = 6.
-    scale_C_indep = 4.5
-    feature_types_list = ["pos", "real", "cat"]
-    independent = False
+    scale_C = 2.5
+    scale_C_indep = 3.9
+    feature_types_list = ["real", "cat"]
+    independent = True
     data_types_create = True
+    
+    metric_optuna = "survival_km_distance"
 
     # # Save the data
-    dataset_name = "Simulations"
+    dataset_name = "Simulations_2"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -70,8 +72,8 @@ def run(treatment_effect):
     # Parameters of the optuna study
     multiplier_trial = 10 # multiplier for the number of trials
     n_splits = 5 # number of splits for cross-validation
-    n_generated_dataset = 1 # number of generated datasets per fold to compute the metric
-    name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect_best_param*10))
+    n_generated_dataset = 50 # number of generated datasets per fold to compute the metric
+    name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect_best_param))
 
     generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
@@ -83,8 +85,10 @@ def run(treatment_effect):
     # BEST PARAMETERS
     best_params_dict = {}
     for generator_name in generators_sel:
-        n_trials = int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name))
-        with open("optuna_results/best_params_{}_ntrials{}_{}.json".format(name_config, n_trials, generator_name), "r") as f:
+        # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
+        n_trials = 100
+        best_params_file =  "/optuna_results/best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name)
+        with open(best_params_file, "r") as f:
             best_params_dict[generator_name] = json.load(f)
 
     

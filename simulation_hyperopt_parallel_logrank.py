@@ -125,8 +125,8 @@ def run(generator_name):
 
     # Parameters of the optuna study
     # multiplier_trial = 10 # multiplier for the number of trials
-    metric_optuna = "survival_km_distance" # metric to optimize in optuna
-    # metric_optuna = "log_rank_test" # metric to optimize in optuna
+    # metric_optuna = "survival_km_distance" # metric to optimize in optuna
+    metric_optuna = "log_rank_test" # metric to optimize in optuna
     n_splits = 5 # number of splits for cross-validation
     n_generated_dataset = 50 # number of generated datasets per fold to compute the metric
     name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect))
