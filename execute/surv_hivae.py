@@ -64,7 +64,7 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
     # Setting for early stopping
     best_val_loss = float('inf')
 
-    patience = 15
+    patience = 10
     counter = 0
     min_improvement_ratio = 5e-3
     for epoch in range(epochs):

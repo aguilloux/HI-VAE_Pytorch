@@ -150,7 +150,7 @@ def run(generator_name):
     best_params_dict, study_dict = {}, {}
     # for generator_name in generators_sel:
     # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
-    n_trials = 100
+    n_trials = 150
     print("{} trials for {}...".format(n_trials, generator_name))
     study_name = original_dir + "/dataset/" + dataset_name + "/optuna_results/optuna_study_{}_ntrials{}_{}_{}".format(name_config, n_trials, metric_optuna, generator_name)
     best_params_file = original_dir + "/dataset/" + dataset_name + "/optuna_results/best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name)
@@ -160,44 +160,44 @@ def run(generator_name):
     else: 
         print("Creating new optuna study for {}...".format(generator_name))
 
-        if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
-            feat_types_dict_ext = feat_types_dict.copy()
-            for i in range(len(feat_types_dict)):
-                if feat_types_dict_ext[i]['name'] == "survcens":
-                    if generator_name in["HI-VAE_weibull"]:
-                        feat_types_dict_ext[i]["type"] = 'surv_weibull'
-                    else:
-                        feat_types_dict_ext[i]["type"] = 'surv_piecewise'
-            best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(df_init_control_encoded,
-                                                                                            miss_mask_control, 
-                                                                                            true_miss_mask_control,
-                                                                                            feat_types_dict_ext, 
-                                                                                            n_generated_dataset, 
-                                                                                            n_splits=n_splits,
-                                                                                            n_trials=n_trials, 
-                                                                                            columns=fnames,
-                                                                                            generator_name=generator_name,
-                                                                                            epochs=1000,
-                                                                                            metric=metric_optuna,
-                                                                                            study_name=study_name)
-            best_params_dict[generator_name] = best_params
-            study_dict[generator_name] = study
-            with open(best_params_file, "w") as f:
-                json.dump(best_params, f)
-        else: 
-            best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_control, 
-                                                                                            columns=fnames, 
-                                                                                            target_column="censor", 
-                                                                                            time_to_event_column="time", 
-                                                                                            n_generated_dataset=n_generated_dataset, 
-                                                                                            n_splits=n_splits,
-                                                                                            n_trials=n_trials, 
-                                                                                            metric=metric_optuna,
-                                                                                            study_name=study_name)
-            best_params_dict[generator_name] = best_params
-            study_dict[generator_name] = study
-            with open(best_params_file, "w") as f:
-                json.dump(best_params, f)
+    if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
+        feat_types_dict_ext = feat_types_dict.copy()
+        for i in range(len(feat_types_dict)):
+            if feat_types_dict_ext[i]['name'] == "survcens":
+                if generator_name in["HI-VAE_weibull"]:
+                    feat_types_dict_ext[i]["type"] = 'surv_weibull'
+                else:
+                    feat_types_dict_ext[i]["type"] = 'surv_piecewise'
+        best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(df_init_control_encoded,
+                                                                                        miss_mask_control, 
+                                                                                        true_miss_mask_control,
+                                                                                        feat_types_dict_ext, 
+                                                                                        n_generated_dataset, 
+                                                                                        n_splits=n_splits,
+                                                                                        n_trials=n_trials, 
+                                                                                        columns=fnames,
+                                                                                        generator_name=generator_name,
+                                                                                        epochs=2000,
+                                                                                        metric=metric_optuna,
+                                                                                        study_name=study_name)
+        best_params_dict[generator_name] = best_params
+        study_dict[generator_name] = study
+        with open(best_params_file, "w") as f:
+            json.dump(best_params, f)
+    else: 
+        best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_control, 
+                                                                                        columns=fnames, 
+                                                                                        target_column="censor", 
+                                                                                        time_to_event_column="time", 
+                                                                                        n_generated_dataset=n_generated_dataset, 
+                                                                                        n_splits=n_splits,
+                                                                                        n_trials=n_trials,
+                                                                                        metric=metric_optuna,
+                                                                                        study_name=study_name)
+        best_params_dict[generator_name] = best_params
+        study_dict[generator_name] = study
+        with open(best_params_file, "w") as f:
+            json.dump(best_params, f)
 
 
 

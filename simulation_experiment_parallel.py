@@ -87,7 +87,7 @@ def run(treatment_effect):
     for generator_name in generators_sel:
         # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
         n_trials = 100
-        best_params_file =  "/optuna_results/best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name)
+        best_params_file = "./dataset/" + dataset_name + "/optuna_results/best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name)
         with open(best_params_file, "r") as f:
             best_params_dict[generator_name] = json.load(f)
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=sim_parallel_HIVAE
+#SBATCH --job-name=sim_survkm_parallel
 #SBATCH --output=logs/sim_%A_%a.out
 #SBATCH --error=logs/sim_%A_%a.err
 #SBATCH --array=0-5  # one task per treatment
