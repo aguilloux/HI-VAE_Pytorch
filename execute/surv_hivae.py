@@ -66,7 +66,7 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
 
     patience = 10
     counter = 0
-    min_improvement_ratio = 5e-3
+    min_improvement_ratio = 0 #5e-3
     for epoch in range(epochs):
         avg_loss, avg_KL_s, avg_KL_z = 0.0, 0.0, 0.0
         avg_loss_val, avg_KL_s_val, avg_KL_z_val = 0.0, 0.0, 0.0
@@ -161,21 +161,38 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
         if verbose:
             if epoch % 100 == 0:
                 visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
+        
+        # if best_val_loss == float('inf'):
+        #     best_val_loss = avg_loss_val
+        #     continue
 
-        if best_val_loss == float('inf'):
-            best_val_loss = avg_loss_val
-            continue
+        # ratio = abs(best_val_loss - avg_loss_val) / abs(best_val_loss)
 
-        ratio = abs(best_val_loss - avg_loss_val) / abs(best_val_loss)
+        # if ratio > min_improvement_ratio:
+        #     best_val_loss = avg_loss_val
+        #     counter = 0
+        # else:
+        #     counter += 1
+        #     if counter >= patience:
+        #         print(f"Early stopping at epoch {epoch} (no ratio improvement)")
+        #         break
 
-        if ratio > min_improvement_ratio:
-            best_val_loss = avg_loss_val
-            counter = 0
-        else:
-            counter += 1
-            if counter >= patience:
-                print(f"Early stopping at epoch {epoch} (no ratio improvement)")
-                break
+        if epoch % 100 == 0:
+            if best_val_loss == float('inf'):
+                best_val_loss = avg_loss_val
+                continue
+
+            ratio = (best_val_loss - avg_loss_val) / abs(best_val_loss) # abs(best_val_loss - avg_loss_val) / abs(best_val_loss)
+
+            if ratio > min_improvement_ratio:
+                best_val_loss = avg_loss_val
+                counter = 0
+            else:
+                counter += 1
+                if counter >= patience:
+                    print(f"Early stopping at epoch {epoch} (no ratio improvement)")
+                    break
+
     if verbose:
         print("Training finished.")
     

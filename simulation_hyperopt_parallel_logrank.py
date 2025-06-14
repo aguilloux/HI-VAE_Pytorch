@@ -63,7 +63,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_2"
+    dataset_name = "Simulations_3"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -177,7 +177,7 @@ def run(generator_name):
                                                                                         n_trials=n_trials, 
                                                                                         columns=fnames,
                                                                                         generator_name=generator_name,
-                                                                                        epochs=2000,
+                                                                                        epochs=1500,
                                                                                         metric=metric_optuna,
                                                                                         study_name=study_name)
         best_params_dict[generator_name] = best_params
