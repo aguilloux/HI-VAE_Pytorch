@@ -58,7 +58,7 @@ def run(treatment_effect):
     independent = True
     data_types_create = True
     
-    metric_optuna = "survival_km_distance"
+    metric_optuna = "log_rank_test"
 
     # # Save the data
     dataset_name = "Simulations_3"
