@@ -160,6 +160,7 @@ def run(generator_name):
     else: 
         print("Creating new optuna study for {}...".format(generator_name))
 
+    n_trials = 50
     if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
         feat_types_dict_ext = feat_types_dict.copy()
         for i in range(len(feat_types_dict)):
@@ -177,7 +178,7 @@ def run(generator_name):
                                                                                         n_trials=n_trials, 
                                                                                         columns=fnames,
                                                                                         generator_name=generator_name,
-                                                                                        epochs=1500,
+                                                                                        epochs=10000,
                                                                                         metric=metric_optuna,
                                                                                         study_name=study_name)
         best_params_dict[generator_name] = best_params

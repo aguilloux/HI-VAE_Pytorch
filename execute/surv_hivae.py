@@ -9,6 +9,8 @@ import importlib
 import random
 import warnings
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 warnings.filterwarnings("ignore")
 
 def set_seed(seed=1):
@@ -65,6 +67,8 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
     best_val_loss = float('inf')
 
     patience = 10
+    n_iter_print = 50
+    n_iter_min = 100
     counter = 0
     min_improvement_ratio = 0 #5e-3
     for epoch in range(epochs):
@@ -177,21 +181,34 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
         #         print(f"Early stopping at epoch {epoch} (no ratio improvement)")
         #         break
 
-        if epoch % 100 == 0:
-            if best_val_loss == float('inf'):
-                best_val_loss = avg_loss_val
-                continue
 
-            ratio = (best_val_loss - avg_loss_val) / abs(best_val_loss) # abs(best_val_loss - avg_loss_val) / abs(best_val_loss)
+        # if epoch % 100 == 0:
+        #     if best_val_loss == float('inf'):
+        #         best_val_loss = avg_loss_val
+        #         continue
 
-            if ratio > min_improvement_ratio:
+        #     ratio = (best_val_loss - avg_loss_val) / abs(best_val_loss) # abs(best_val_loss - avg_loss_val) / abs(best_val_loss)
+
+        #     if ratio > min_improvement_ratio:
+        #         best_val_loss = avg_loss_val
+        #         counter = 0
+        #     else:
+        #         counter += 1
+        #         if counter >= patience:
+        #             print(f"Early stopping at epoch {epoch} (no ratio improvement)")
+        #             break
+
+        if epoch % n_iter_print == 0:
+            if avg_loss_val >= best_val_loss:
+                counter += 1
+            else: 
                 best_val_loss = avg_loss_val
                 counter = 0
-            else:
-                counter += 1
-                if counter >= patience:
-                    print(f"Early stopping at epoch {epoch} (no ratio improvement)")
-                    break
+
+            if counter >= patience and epoch >= n_iter_min:
+                print(f"Early stopping at epoch {epoch} (no ratio improvement)")
+                break
+
 
     if verbose:
         print("Training finished.")
@@ -250,7 +267,7 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
         return est_data_gen_transformed
 
 def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
-        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}, epochs = 1000, verbose = True):
+        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}, epochs = 1000, verbose = True, plot = False):
 
     set_seed()
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
@@ -283,9 +300,29 @@ def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_
                             n_layers_surv_piecewise=n_layers
                             )
     data = torch.from_numpy(df.values)
-    model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
+    model_hivae, loss_train, loss_val = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                    feat_types_dict, n_generated_dataset, n_generated_sample)
+    
+    if plot:
+        loss_track = {"epoch": list(range(1, len(loss_train) + 1)),
+                    "loss_train": loss_train,
+                    "loss_val": loss_val}
+        
+        loss_df = pd.DataFrame(loss_track)
+        loss_df_melted = loss_df.melt(id_vars="epoch", value_vars=["loss_train", "loss_val"],
+                                    var_name="Loss Type", value_name="Loss")
+
+        # Plot
+        plt.figure(figsize=(10, 5))
+        sns.lineplot(data=loss_df_melted, x="epoch", y="Loss", hue="Loss Type")
+        plt.title("Loss evolution", fontweight="bold")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.legend(title="Loss Type")
+        plt.tight_layout()
+        plt.show()
+
 
     return est_data_gen_transformed
 

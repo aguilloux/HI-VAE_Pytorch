@@ -210,7 +210,7 @@ def run(treatment_effect):
                             feat_types_dict_ext[i]["type"] = 'surv_piecewise'
                 data_gen_control = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control, true_miss_mask_control,
                                                                     feat_types_dict_ext, n_generated_dataset, 
-                                                                    params=best_params)
+                                                                    params=best_params, epochs=10000)
             else:
                 data_gen_control = generators_dict[generator_name].run(data_init_control, columns=fnames, 
                                                                     target_column="censor", time_to_event_column="time", 
@@ -257,7 +257,7 @@ def run(treatment_effect):
         for metric in synthcity_metrics_sel:
             results[metric + "_" + generator_name] = synthcity_metrics_res_dict[generator_name][metric].values
 
-    results.to_csv(original_dir + "/dataset/" + dataset_name + "/results_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + "treat_effect_" + str(treatment_effect) + ".csv")
+    results.to_csv(original_dir + "/dataset/" + dataset_name + "/results_" + metric_optuna + "_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + "treat_effect_" + str(treatment_effect) + ".csv")
 
 
 
