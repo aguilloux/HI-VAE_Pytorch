@@ -116,7 +116,7 @@ def run(treatment_effect):
         est_cox_coef_se_gen_dict[generator_name] = []
         synthcity_metrics_res_dict[generator_name] = pd.DataFrame()
 
-    seed = 0
+    seed = 0 
     # for t in np.arange(len(treat_effects)):
     #     treatment_effect = treat_effects[t]
     coef_init_univ = true_univ_coef(treatment_effect, independent, feature_types_list,
@@ -136,8 +136,8 @@ def run(treatment_effect):
     for m in np.arange(n_MC_exp):
         if m % 10 == 0:
             print("Monte-Carlo experiment", m)
-        # To make sure the difference between simulated dataset, increase seed value each time
         seed += 1
+        # To make sure the difference between simulated dataset, increase seed value each time
         control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
                                                 n_features_bytype, n_active_features, p_treated, shape_T, shape_C,
                                                 scale_C, scale_C_indep, data_types_create, seed=seed)

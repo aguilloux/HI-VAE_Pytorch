@@ -63,7 +63,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_3"
+    dataset_name = "Simulations_4"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -160,7 +160,6 @@ def run(generator_name):
     else: 
         print("Creating new optuna study for {}...".format(generator_name))
 
-    n_trials = 50
     if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
         feat_types_dict_ext = feat_types_dict.copy()
         for i in range(len(feat_types_dict)):
