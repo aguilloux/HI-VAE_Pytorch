@@ -43,12 +43,12 @@ def true_univ_coef(treatment_effect, independent = True, feature_types_list = ["
 
     return coef_init[0]
 
-def run(treatment_effect):
+def run(MC_id):
     # Simulate the initial data
     n_samples = 600
     n_features_bytype = 6
     n_active_features = 3 
-    treatment_effect_best_param = 0.
+    treatment_effect = 0.
     p_treated = 0.5
     shape_T = 2.
     shape_C = 2.
@@ -61,7 +61,7 @@ def run(treatment_effect):
     metric_optuna = "survival_km_distance"
 
     # # Save the data
-    dataset_name = "Simulations_3"
+    dataset_name = "Simulations_4"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -73,11 +73,12 @@ def run(treatment_effect):
     multiplier_trial = 10 # multiplier for the number of trials
     n_splits = 5 # number of splits for cross-validation
     n_generated_dataset = 50 # number of generated datasets per fold to compute the metric
-    name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect_best_param))
+    name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect))
 
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    generators_sel = ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                     "HI-VAE_piecewise" : surv_hivae,
+                    "HI-VAE_lognormal" : surv_hivae,
                     "Surv-GAN" : surv_gan,
                     "Surv-VAE" : surv_vae}
 
@@ -96,7 +97,8 @@ def run(treatment_effect):
     # treat_effects = np.arange(0., 1.1, 0.2)
     n_generated_dataset = 50
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance', 'Detection XGB', 'NNDR', 'K-map score']
-    n_MC_exp = 100
+    n_MC_exp = 10
+    treat_effects = np.arange(0., 1.1, 0.2)
 
     simu_num = []
     D_control = []
@@ -116,16 +118,16 @@ def run(treatment_effect):
         est_cox_coef_se_gen_dict[generator_name] = []
         synthcity_metrics_res_dict[generator_name] = pd.DataFrame()
 
-    seed = 0 
-    # for t in np.arange(len(treat_effects)):
-    #     treatment_effect = treat_effects[t]
+    seed = MC_id * n_MC_exp # 0, 10, 20, .. 
+    
     coef_init_univ = true_univ_coef(treatment_effect, independent, feature_types_list,
-                                        n_features_bytype, n_active_features, p_treated, shape_T,
-                                        shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
-    print("Treatment_effect", treatment_effect)
-    dataset_name_treatment = dataset_name + "/Treat_effect_" + str(treatment_effect) 
-    if not os.path.exists("./dataset/" + dataset_name_treatment):
-        os.makedirs("./dataset/" + dataset_name_treatment)
+                                    n_features_bytype, n_active_features, p_treated, shape_T,
+                                    shape_C, scale_C, scale_C_indep, data_types_create, seed=0)
+    
+    print("MC_{}to{}".format(MC_id * n_MC_exp + 1, (MC_id + 1) * n_MC_exp))
+    dataset_name_MC = dataset_name + "/MC_{}to{}".format(MC_id * n_MC_exp + 1, (MC_id + 1) * n_MC_exp) 
+    if not os.path.exists("./dataset/" + dataset_name_MC):
+        os.makedirs("./dataset/" + dataset_name_MC)
 
     # Set a unique working directory for this job
     original_dir, work_dir = setup_unique_working_dir("parallel_runs")
@@ -134,29 +136,21 @@ def run(treatment_effect):
     print("Original directory:", original_dir)
     
     for m in np.arange(n_MC_exp):
-        if m % 10 == 0:
-            print("Monte-Carlo experiment", m)
+        # if m % 10 == 0:
+        print("Monte-Carlo experiment", m + n_MC_exp * MC_id)
         seed += 1
         # To make sure the difference between simulated dataset, increase seed value each time
-        control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
+        control, _, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
                                                 n_features_bytype, n_active_features, p_treated, shape_T, shape_C,
                                                 scale_C, scale_C_indep, data_types_create, seed=seed)
 
 
         control = control.drop(columns='treatment')
-        treated = treated.drop(columns='treatment')
-        
-        data_file_control = original_dir + "/dataset/" + dataset_name_treatment + "/data_control.csv"
-        data_file_treated = original_dir + "/dataset/" + dataset_name_treatment + "/data_treated.csv"
-        feat_types_file_control = original_dir + "/dataset/" + dataset_name_treatment + "/data_types_control.csv"
-        feat_types_file_treated= original_dir + "/dataset/" + dataset_name_treatment + "/data_types_treated.csv"
-    
+        data_file_control = original_dir + "/dataset/" + dataset_name_MC + "/data_control.csv"
+        feat_types_file_control = original_dir + "/dataset/" + dataset_name_MC + "/data_types_control.csv"
         control.to_csv(data_file_control, index=False , header=False)
-        treated.to_csv(data_file_treated, index=False , header=False)
         types.to_csv(feat_types_file_control)
-        types.to_csv(feat_types_file_treated)
-
-
+        
         # Load and transform control data
         df_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control,
                                                                                                                             feat_types_file_control, 
@@ -164,48 +158,28 @@ def run(treatment_effect):
         data_init_control_encoded = torch.from_numpy(df_init_control_encoded.values)
         data_init_control = data_processing.discrete_variables_transformation(data_init_control_encoded, feat_types_dict)
 
-        # Load and transform treated data
-        df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file, true_miss_file)
-        data_init_treated_encoded = torch.from_numpy(df_init_treated_encoded.values)
-        data_init_treated = data_processing.discrete_variables_transformation(data_init_treated_encoded, feat_types_dict)
-
         # Format data in dataframe
         fnames = types['name'][:-1].tolist()
         fnames.append("time")#.append("censor")
         fnames.append("censor")
 
         # Format data in dataframe
-        df_init_treated = pd.DataFrame(data_init_treated.numpy(), columns=fnames)
         df_init_control = pd.DataFrame(data_init_control.numpy(), columns=fnames)
 
         # Update dataframe
-        df_init_treated["treatment"] = 1
+        df_gen_control_dict = {}
         df_init_control["treatment"] = 0
-
-        df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
-        columns = ['time', 'censor', 'treatment']
-        coef_init, _, _, se_init = fit_cox_model(df_init, columns)
-
-        est_cox_coef_init += [coef_init[0]] * n_generated_dataset
-        est_cox_coef_se_init += [se_init[0]] * n_generated_dataset
-
-        p_value_init = compute_logrank_test(df_init_control, df_init_treated)
-        log_p_value_init += [p_value_init] * n_generated_dataset
-        H0_coef += [treatment_effect] * n_generated_dataset
-        # simu_num += [t * n_MC_exp + m] * n_generated_dataset
-        simu_num += [n_MC_exp + m] * n_generated_dataset
-        D_control += [control['censor'].sum()] * n_generated_dataset
-        D_treated += [treated['censor'].sum()] * n_generated_dataset
-        coef_init_univ_list += [coef_init_univ] * n_generated_dataset
 
         for generator_name in generators_sel:
             best_params = best_params_dict[generator_name]
-            if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
+            if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise"]:
                 feat_types_dict_ext = feat_types_dict.copy()
                 for i in range(len(feat_types_dict)):
                     if feat_types_dict_ext[i]['name'] == "survcens":
                         if generator_name in["HI-VAE_weibull"]:
                             feat_types_dict_ext[i]["type"] = 'surv_weibull'
+                        elif generator_name in["HI-VAE_lognormal"]:
+                            feat_types_dict_ext[i]["type"] = 'surv'
                         else:
                             feat_types_dict_ext[i]["type"] = 'surv_piecewise'
                 data_gen_control = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control, true_miss_mask_control,
@@ -216,29 +190,75 @@ def run(treatment_effect):
                                                                     target_column="censor", time_to_event_column="time", 
                                                                     n_generated_dataset=n_generated_dataset, params=best_params)
 
-            log_p_value_gen_list = []
-            est_cox_coef_gen = []
-            est_cox_coef_se_gen = []
             list_df_gen_control = []
-
             for i in range(n_generated_dataset):
                 df_gen_control = pd.DataFrame(data_gen_control[i].numpy(), columns=fnames)
                 df_gen_control["treatment"] = 0
                 list_df_gen_control.append(df_gen_control)
-                log_p_value_gen_list.append(compute_logrank_test(df_gen_control, treated))
-                df_gen = pd.concat([df_gen_control, df_init_treated], ignore_index=True)
-                columns = ['time', 'censor', 'treatment']
-                coef_gen, _, _, se_gen = fit_cox_model(df_gen, columns)
-                est_cox_coef_gen.append(coef_gen[0])
-                est_cox_coef_se_gen.append(se_gen[0])
+            df_gen_control_dict[generator_name] = list_df_gen_control
 
+            # Compare the performance of generation in term of synthcity metric between generated control group and intial control group
             synthcity_metrics_res = general_metrics(df_init_control, list_df_gen_control, generator_name)[synthcity_metrics_sel]
+            for _ in np.arange(len(treat_effects)):
+                synthcity_metrics_res_dict[generator_name] = pd.concat([synthcity_metrics_res_dict[generator_name], synthcity_metrics_res])
 
-            log_p_value_gen_dict[generator_name] += log_p_value_gen_list
-            est_cox_coef_gen_dict[generator_name] += est_cox_coef_gen
-            est_cox_coef_se_gen_dict[generator_name] += est_cox_coef_se_gen
-            synthcity_metrics_res_dict[generator_name] = pd.concat([synthcity_metrics_res_dict[generator_name], 
-                                                                    synthcity_metrics_res])
+
+
+        # Compare the performance of generation in term of p-values between generated control group and intial treated group with different treatment effects
+        for t in np.arange(len(treat_effects)):
+            treatment_effect = treat_effects[t]
+            _, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
+                                                n_features_bytype, n_active_features, p_treated, shape_T, shape_C,
+                                                scale_C, scale_C_indep, data_types_create, seed=seed)
+
+            treated = treated.drop(columns='treatment')
+            data_file_treated = "./dataset/" + dataset_name_MC + "/data_treated.csv"
+            feat_types_file_treated= "./dataset/" + dataset_name_MC + "/data_types_treated.csv"
+            treated.to_csv(data_file_treated, index=False , header=False)
+            types.to_csv(feat_types_file_treated)
+
+            # Load and transform treated data
+            df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file, true_miss_file)
+            data_init_treated_encoded = torch.from_numpy(df_init_treated_encoded.values)
+            data_init_treated = data_processing.discrete_variables_transformation(data_init_treated_encoded, feat_types_dict)
+            # Format data in dataframe
+            df_init_treated = pd.DataFrame(data_init_treated.numpy(), columns=fnames)
+            # Update dataframe
+            df_init_treated["treatment"] = 1
+
+            df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
+            columns = ['time', 'censor', 'treatment']
+            coef_init, _, _, se_init = fit_cox_model(df_init, columns)
+
+            est_cox_coef_init += [coef_init[0]] * n_generated_dataset
+            est_cox_coef_se_init += [se_init[0]] * n_generated_dataset
+
+            p_value_init = compute_logrank_test(df_init_control, df_init_treated)
+            log_p_value_init += [p_value_init] * n_generated_dataset
+            H0_coef += [treatment_effect] * n_generated_dataset
+            simu_num += [m * len(treat_effects) + t] * n_generated_dataset
+            D_control += [control['censor'].sum()] * n_generated_dataset
+            D_treated += [treated['censor'].sum()] * n_generated_dataset
+            coef_init_univ_list += [coef_init_univ] * n_generated_dataset
+
+            for generator_name in generators_sel:
+                log_p_value_gen_list = []
+                est_cox_coef_gen = []
+                est_cox_coef_se_gen = []
+                for i in range(n_generated_dataset):
+                    df_gen_control = df_gen_control_dict[generator_name][i]
+                    log_p_value_gen_list.append(compute_logrank_test(df_gen_control, treated))
+
+                    df_gen = pd.concat([df_gen_control, df_init_treated], ignore_index=True)
+                    columns = ['time', 'censor', 'treatment']
+                    coef_gen, _, _, se_gen = fit_cox_model(df_gen, columns)
+                    est_cox_coef_gen.append(coef_gen[0])
+                    est_cox_coef_se_gen.append(se_gen[0])
+
+                log_p_value_gen_dict[generator_name] += log_p_value_gen_list
+                est_cox_coef_gen_dict[generator_name] += est_cox_coef_gen
+                est_cox_coef_se_gen_dict[generator_name] += est_cox_coef_se_gen
+
 
     # SAVE DATAFRAME
     results = pd.DataFrame({'XP_num' : simu_num,
@@ -257,7 +277,7 @@ def run(treatment_effect):
         for metric in synthcity_metrics_sel:
             results[metric + "_" + generator_name] = synthcity_metrics_res_dict[generator_name][metric].values
 
-    results.to_csv(original_dir + "/dataset/" + dataset_name + "/results_" + metric_optuna + "_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + "treat_effect_" + str(treatment_effect) + ".csv")
+    results.to_csv(original_dir + "/dataset/" + dataset_name + "/results_" + metric_optuna + "_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + "MC_" + str(MC_id * n_MC_exp + 1) + 'to' + str((MC_id + 1) * n_MC_exp) + ".csv")
 
 
 
@@ -274,7 +294,8 @@ def setup_unique_working_dir(base_dir="experiments"):
 
 
 if __name__ == "__main__":
-    treat_effects = np.arange(0., 1.1, 0.2)
-    treatment_id = int(sys.argv[1])
-    run(treatment_effect=treat_effects[treatment_id])
+    # treat_effects = np.arange(0., 1.1, 0.2)
+    # treatment_id = int(sys.argv[1])
+    MC_id = int(sys.argv[1])
+    run(MC_id)
     
