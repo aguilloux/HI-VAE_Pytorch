@@ -25,19 +25,6 @@ print('Device :', DEVICE)
 
 
 def run(generator_name):
-    # Simulate the initial data
-    # n_samples = 600
-    # n_features_bytype = 6
-    # n_active_features = 3 
-    # treatment_effect = 0.
-    # p_treated = 0.5
-    # shape_T = 2.
-    # shape_C = 2.
-    # scale_C = 6.
-    # scale_C_indep = 4.5
-    # feature_types_list = ["real", "cat"]
-    # independent = False
-    # data_types_create = True
 
     n_samples = 600
     n_features_bytype = 6
