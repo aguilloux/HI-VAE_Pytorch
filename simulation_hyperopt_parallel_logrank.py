@@ -133,6 +133,7 @@ def run(generator_name):
 
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                     "HI-VAE_piecewise" : surv_hivae,
+                    "HI-VAE_lognormal" : surv_hivae,
                     "Surv-GAN" : surv_gan,
                     "Surv-VAE" : surv_vae}
     
@@ -160,12 +161,14 @@ def run(generator_name):
     else: 
         print("Creating new optuna study for {}...".format(generator_name))
 
-    if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise"]:
+    if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise"]:
         feat_types_dict_ext = feat_types_dict.copy()
         for i in range(len(feat_types_dict)):
             if feat_types_dict_ext[i]['name'] == "survcens":
                 if generator_name in["HI-VAE_weibull"]:
                     feat_types_dict_ext[i]["type"] = 'surv_weibull'
+                elif generator_name in["HI-VAE_lognormal"]:
+                    feat_types_dict_ext[i]["type"] = 'surv'
                 else:
                     feat_types_dict_ext[i]["type"] = 'surv_piecewise'
         best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(df_init_control_encoded,
@@ -213,6 +216,6 @@ def setup_unique_working_dir(base_dir="experiments"):
   
 
 if __name__ == "__main__":
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    generators_sel = ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])
