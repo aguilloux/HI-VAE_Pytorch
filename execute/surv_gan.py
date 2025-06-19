@@ -10,7 +10,7 @@ import numpy as np
 import optuna
 import os
 
-def run(data, columns, target_column, time_to_event_column, n_generated_dataset, params=None):
+def run(data, columns, target_column, time_to_event_column, n_generated_dataset, n_generated_sample=None, params=None):
     """
     Use a conditional GAN for survival data generation
     """
@@ -31,10 +31,12 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
     model_survgan.fit(data, cond=cond)
     
     # Generate
+    if n_generated_sample is None:
+        n_generated_sample = data.shape[0]
     cond_gen = data[[target_column]]
     est_data_gen_transformed_survgan = []
     for j in range(n_generated_dataset):
-        out = model_survgan.generate(count=data.shape[0], cond=cond_gen)
+        out = model_survgan.generate(count=n_generated_sample, cond=cond_gen)
         est_data_gen_transformed_survgan.append(out)
 
     return est_data_gen_transformed_survgan

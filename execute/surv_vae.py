@@ -10,11 +10,11 @@ import numpy as np
 import optuna
 import os
 
-def run(data, columns, target_column, time_to_event_column, n_generated_dataset, params=None):
+def run(data, columns, target_column, time_to_event_column, n_generated_dataset, n_generated_sample=None, params=None):
     """
     Use a VAE for tabular data generation
     """
-    
+
     # Define data and model
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
     data = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
@@ -29,9 +29,11 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
     model_survae.fit(data)
     
     # Generate
+    if n_generated_sample is None:
+        n_generated_sample = data.shape[0]
     est_data_gen_transformed_survae = []
     for j in range(n_generated_dataset):
-        out = model_survae.generate(count=data.shape[0])
+        out = model_survae.generate(count=n_generated_sample)
         est_data_gen_transformed_survae.append(out)
 
     return est_data_gen_transformed_survae
