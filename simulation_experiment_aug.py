@@ -94,7 +94,7 @@ def kaplan_meier_estimation(surv_data, label=None, ax=None):
     ax.step(uniq_time, surv_prob, where="post", label=label)
     ax.fill_between(uniq_time, conf_int[0], conf_int[1], alpha=0.25, step="post")
 
-def verify_hyperopt(generators, data_hi_vae, data, miss_mask, true_miss_mask,feat_types_dict, n_generated_dataset, columns, res_file, best_params_dict):
+def verify_hyperopt(generators, data_hi_vae, data, miss_mask, true_miss_mask,feat_types_dict, n_generated_dataset, columns, res_file, best_params_dict, epochs):
     data_gen_control_dict_best_params = {}
     data_gen_control_dict = {}
     for generator_name in generators:
@@ -113,10 +113,12 @@ def verify_hyperopt(generators, data_hi_vae, data, miss_mask, true_miss_mask,fea
             print("Generate data by {} with best params".format(generator_name))
             data_gen_control_dict_best_params[generator_name] = generator_func.run(data_hi_vae, miss_mask,
                                                                                    true_miss_mask, feat_types_dict_ext,
-                                                                                   n_generated_dataset, params=best_params)
+                                                                                   n_generated_dataset, params=best_params,
+                                                                                   epochs=epochs)
             print("Generate data by {} with defaut params".format(generator_name))
             data_gen_control_dict[generator_name] = generator_func.run(data_hi_vae, miss_mask,
-                                                                       true_miss_mask, feat_types_dict_ext, n_generated_dataset)
+                                                                       true_miss_mask, feat_types_dict_ext, n_generated_dataset,
+                                                                       epochs=epochs)
         else:
             print("Generate data by {} with best params".format(generator_name))
             data_gen_control_dict_best_params[generator_name] = generator_func.run(data, columns=columns,
@@ -236,8 +238,7 @@ def run():
     epochs = 10000
     n_generated_dataset = 50 # number of generated datasets per fold to compute the metric
     name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect))
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
 
     # HYPER-PARAMETER OPTIMIZATION
     best_params_dict = {}
@@ -268,12 +269,13 @@ def run():
                     n_generated_dataset = n_generated_dataset,
                     columns = fnames,
                     res_file = res_file,
-                    best_params_dict = best_params_dict)
+                    best_params_dict = best_params_dict,
+                    epochs=epochs)
 
     # MONTE-CARLO EXPERIMENT
-    n_MC_exp = 3
+    n_MC_exp = 100
     treat_effects = np.arange(0., 1.1, 0.2)
-    drop_perc_list = [0, .2, .4]
+    drop_perc_list = [0, .2, .4, .6]
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance',
                                 'Detection XGB', 'NNDR', 'K-map score']
 
@@ -346,12 +348,13 @@ def run():
                     data_gen_control = generators_dict[generator_name].run(df_init_control_encoded_ext, miss_mask_control_ext,
                                                                         true_miss_mask_control_ext, feat_types_dict_ext,
                                                                         n_generated_dataset, n_generated_sample=n_samples_control,
-                                                                        params=best_params)
+                                                                        params=best_params, epochs=epochs)
                 else:
                     data_gen_control = generators_dict[generator_name].run(data_init_control_ext, columns=fnames,
                                                                         target_column="censor",
                                                                         time_to_event_column="time",
                                                                         n_generated_dataset=n_generated_dataset,
+                                                                        n_generated_sample=n_samples_control,
                                                                         params=best_params)
 
                 list_df_gen_control = []
