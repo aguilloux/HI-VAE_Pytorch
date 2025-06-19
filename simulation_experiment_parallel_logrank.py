@@ -272,7 +272,7 @@ def run(MC_id):
             p_value_init = compute_logrank_test(df_init_control, df_init_treated)
             log_p_value_init += [p_value_init] * n_generated_dataset
             H0_coef += [treatment_effect] * n_generated_dataset
-            simu_num += [m * len(treat_effects) + t] * n_generated_dataset
+            simu_num += [(m + n_MC_exp * MC_id) * len(treat_effects) + t] * n_generated_dataset
             D_control += [control['censor'].sum()] * n_generated_dataset
             D_treated += [treated['censor'].sum()] * n_generated_dataset
             coef_init_univ_list += [coef_init_univ] * n_generated_dataset
