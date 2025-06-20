@@ -29,14 +29,25 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
     model_survae.fit(data)
     
     # Generate
-    if n_generated_sample is None:
-        n_generated_sample = data.shape[0]
-    est_data_gen_transformed_survae = []
-    for j in range(n_generated_dataset):
-        out = model_survae.generate(count=n_generated_sample)
-        est_data_gen_transformed_survae.append(out)
+    if isinstance(n_generated_sample, list):
+        est_data_gen_transformed_survae_list = []
+        for n_generated_sample_ in n_generated_sample:
+            est_data_gen_transformed_survae = []
+            for j in range(n_generated_dataset):
+                out = model_survae.generate(count=n_generated_sample)
+                est_data_gen_transformed_survae.append(out)
+            est_data_gen_transformed_survae_list.append(est_data_gen_transformed_survae)
 
-    return est_data_gen_transformed_survae
+        return est_data_gen_transformed_survae_list
+    else:
+        if n_generated_sample is None:
+            n_generated_sample = data.shape[0]
+        est_data_gen_transformed_survae = []
+        for j in range(n_generated_dataset):
+            out = model_survae.generate(count=n_generated_sample)
+            est_data_gen_transformed_survae.append(out)
+
+        return est_data_gen_transformed_survae
 
 
 

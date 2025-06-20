@@ -265,29 +265,38 @@ def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_
                             )
     data = torch.from_numpy(df.values)
     model_hivae, loss_train, loss_val = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
-    est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
-                                                   feat_types_dict, n_generated_dataset, n_generated_sample)
-    
-    if plot:
-        loss_track = {"epoch": list(range(1, len(loss_train) + 1)),
-                    "loss_train": loss_train,
-                    "loss_val": loss_val}
-        
-        loss_df = pd.DataFrame(loss_track)
-        loss_df_melted = loss_df.melt(id_vars="epoch", value_vars=["loss_train", "loss_val"],
-                                    var_name="Loss Type", value_name="Loss")
+    if isinstance(n_generated_sample, list):
+        est_data_gen_transformed_list = []
+        for n_generated_sample_ in n_generated_sample:
+            est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+                                                        feat_types_dict, n_generated_dataset, n_generated_sample_)
+            est_data_gen_transformed_list.append(est_data_gen_transformed)
 
-        # Plot
-        plt.figure(figsize=(10, 5))
-        sns.lineplot(data=loss_df_melted, x="epoch", y="Loss", hue="Loss Type")
-        plt.title("Loss evolution", fontweight="bold")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.legend(title="Loss Type")
-        plt.tight_layout()
-        plt.show()
+        return est_data_gen_transformed_list
+    else:
+        est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+                                                    feat_types_dict, n_generated_dataset, n_generated_sample)
 
-    return est_data_gen_transformed
+        if plot:
+            loss_track = {"epoch": list(range(1, len(loss_train) + 1)),
+                        "loss_train": loss_train,
+                        "loss_val": loss_val}
+
+            loss_df = pd.DataFrame(loss_track)
+            loss_df_melted = loss_df.melt(id_vars="epoch", value_vars=["loss_train", "loss_val"],
+                                        var_name="Loss Type", value_name="Loss")
+
+            # Plot
+            plt.figure(figsize=(10, 5))
+            sns.lineplot(data=loss_df_melted, x="epoch", y="Loss", hue="Loss Type")
+            plt.title("Loss evolution", fontweight="bold")
+            plt.xlabel("Epoch")
+            plt.ylabel("Loss")
+            plt.legend(title="Loss Type")
+            plt.tight_layout()
+            plt.show()
+
+            return est_data_gen_transformed
 
 
 

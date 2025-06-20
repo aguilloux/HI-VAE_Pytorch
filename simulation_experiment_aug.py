@@ -275,7 +275,7 @@ def run():
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 100
     treat_effects = np.arange(0., 1.1, 0.2)
-    drop_perc_list = [0, .2, .4, .6]
+    aug_perc_list = [0, .2, .4, .6]
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance',
                                 'Detection XGB', 'NNDR', 'K-map score']
 
@@ -290,7 +290,7 @@ def run():
     D_treated = []
     coef_init_univ_list = []
     H0_coef = []
-    drop_percs = []
+    aug_percs = []
     log_p_value_init = []
     est_cox_coef_init = []
     est_cox_coef_se_init = []
@@ -329,37 +329,36 @@ def run():
         df_init_control["treatment"] = 0
 
         n_samples_control = df_init_control_encoded.shape[0]
-        for d in range(len(drop_perc_list)):
-            drop_perc = drop_perc_list[d]
-            indices = torch.randperm(n_samples_control)[:int(n_samples_control * (1 - drop_perc))]
-            df_init_control_encoded_ext = df_init_control_encoded.loc[indices]
-            data_init_control_ext = data_init_control[indices]
-            miss_mask_control_ext = miss_mask_control[indices]
-            true_miss_mask_control_ext = true_miss_mask_control[indices]
-            generators_dict = {"HI-VAE_weibull" : surv_hivae,
-                               "HI-VAE_piecewise" : surv_hivae,
-                               "HI-VAE_lognormal" : surv_hivae,
-                               "Surv-GAN" : surv_gan,
-                               "Surv-VAE" : surv_vae}
-            for generator_name in generators_sel:
-                best_params = best_params_dict[generator_name]
-                if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise"]:
-                    feat_types_dict_ext = adjust_feat_types_for_generator(generator_name, feat_types_dict)
-                    data_gen_control = generators_dict[generator_name].run(df_init_control_encoded_ext, miss_mask_control_ext,
-                                                                        true_miss_mask_control_ext, feat_types_dict_ext,
-                                                                        n_generated_dataset, n_generated_sample=n_samples_control,
-                                                                        params=best_params, epochs=epochs)
-                else:
-                    data_gen_control = generators_dict[generator_name].run(data_init_control_ext, columns=fnames,
-                                                                        target_column="censor",
-                                                                        time_to_event_column="time",
-                                                                        n_generated_dataset=n_generated_dataset,
-                                                                        n_generated_sample=n_samples_control,
-                                                                        params=best_params)
+        n_samples_control_aug = [int(n_samples_control * (1 + aug_perc)) for aug_perc in aug_perc_list]
+        generators_dict = {"HI-VAE_weibull" : surv_hivae,
+                        "HI-VAE_piecewise" : surv_hivae,
+                        "HI-VAE_lognormal" : surv_hivae,
+                        "Surv-GAN" : surv_gan,
+                        "Surv-VAE" : surv_vae}
+        data_gen_control_dict = {}
+        for generator_name in generators_sel:
+            best_params = best_params_dict[generator_name]
+            if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise"]:
+                feat_types_dict_ext = adjust_feat_types_for_generator(generator_name, feat_types_dict)
+                data_gen_control = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control,
+                                                                    true_miss_mask_control, feat_types_dict_ext,
+                                                                    n_generated_dataset, n_generated_sample=n_samples_control_aug,
+                                                                    params=best_params, epochs=epochs)
+            else:
+                data_gen_control = generators_dict[generator_name].run(data_init_control, columns=fnames,
+                                                                    target_column="censor",
+                                                                    time_to_event_column="time",
+                                                                    n_generated_dataset=n_generated_dataset,
+                                                                    n_generated_sample=n_samples_control_aug,
+                                                                    params=best_params)
+            data_gen_control_dict[generator_name] = data_gen_control
 
+        for d in range(len(aug_perc_list)):
+            aug_perc = aug_perc_list[d]
+            for generator_name in generators_sel:
                 list_df_gen_control = []
                 for i in range(n_generated_dataset):
-                    df_gen_control = pd.DataFrame(data_gen_control[i].numpy(), columns=fnames)
+                    df_gen_control = pd.DataFrame(data_gen_control_dict[generator_name][d][i].numpy(), columns=fnames)
                     df_gen_control["treatment"] = 0
                     list_df_gen_control.append(df_gen_control)
                 df_gen_control_dict[generator_name] = list_df_gen_control
@@ -368,8 +367,6 @@ def run():
                 synthcity_metrics_res = general_metrics(df_init_control, list_df_gen_control, generator_name)[synthcity_metrics_sel]
                 for _ in np.arange(len(treat_effects)):
                     synthcity_metrics_res_dict[generator_name] = pd.concat([synthcity_metrics_res_dict[generator_name], synthcity_metrics_res])
-
-
             # Compare the performance of generation in term of p-values between generated control group and intial treated group with different treatment effects
             for t in np.arange(len(treat_effects)):
                 treatment_effect = treat_effects[t]
@@ -405,8 +402,8 @@ def run():
                 p_value_init = compute_logrank_test(df_init_control, df_init_treated)
                 log_p_value_init += [p_value_init] * n_generated_dataset
                 H0_coef += [treatment_effect] * n_generated_dataset
-                drop_percs += [drop_perc] * n_generated_dataset
-                simu_num += [m * len(treat_effects) * len(drop_perc_list) + d * len(treat_effects) + t] * n_generated_dataset
+                aug_percs += [aug_perc] * n_generated_dataset
+                simu_num += [m * len(treat_effects) * len(aug_perc_list) + d * len(treat_effects) + t] * n_generated_dataset
                 D_control += [control['censor'].sum()] * n_generated_dataset
                 D_treated += [treated['censor'].sum()] * n_generated_dataset
                 coef_init_univ_list += [coef_init_univ] * n_generated_dataset
@@ -437,7 +434,7 @@ def run():
                             "D_treated" : D_treated,
                             "H0_coef_univ" : coef_init_univ_list,
                             "H0_coef" : H0_coef,
-                            "drop_perc" : drop_percs,
+                            "aug_perc" : aug_percs,
                             "log_pvalue_init" : log_p_value_init, 
                             "est_cox_coef_init" : est_cox_coef_init,
                             "est_cox_coef_se_init" : est_cox_coef_se_init})
