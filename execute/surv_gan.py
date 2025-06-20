@@ -32,17 +32,30 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
     model_survgan.fit(data, cond=cond)
     
     # Generate
-    if n_generated_sample is None:
-        n_generated_sample = data.shape[0]
-    indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
-    cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
-    est_data_gen_transformed_survgan = []
-    for j in range(n_generated_dataset):
-        out = model_survgan.generate(count=n_generated_sample, cond=cond_gen)
-        est_data_gen_transformed_survgan.append(out)
+    if isinstance(n_generated_sample, list):
+        est_data_gen_transformed_survgan_list = []
+        for n_generated_sample_ in n_generated_sample:
+            indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample_ - data.shape[0],))))
+            cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
+            est_data_gen_transformed_survgan = []
+            for j in range(n_generated_dataset):
+                out = model_survgan.generate(count=n_generated_sample_, cond=cond_gen)
+                est_data_gen_transformed_survgan.append(out)
 
-    return est_data_gen_transformed_survgan
-    
+            est_data_gen_transformed_survgan_list.append(est_data_gen_transformed_survgan)
+
+        return est_data_gen_transformed_survgan_list
+    else:
+        if n_generated_sample is None:
+            n_generated_sample = data.shape[0]
+        indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
+        cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
+        est_data_gen_transformed_survgan = []
+        for j in range(n_generated_dataset):
+            out = model_survgan.generate(count=n_generated_sample, cond=cond_gen)
+            est_data_gen_transformed_survgan.append(out)
+
+        return est_data_gen_transformed_survgan
 
 
 def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_surv_gan', metric='survival_km_distance'):
