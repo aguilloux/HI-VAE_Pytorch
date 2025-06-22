@@ -296,7 +296,7 @@ def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_
             plt.tight_layout()
             plt.show()
 
-            return est_data_gen_transformed
+        return est_data_gen_transformed
 
 
 
