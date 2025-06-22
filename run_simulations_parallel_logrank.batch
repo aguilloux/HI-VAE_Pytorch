@@ -22,3 +22,4 @@ source activate hivae
 MC_ID=${SLURM_ARRAY_TASK_ID}
 
 python3 simulation_experiment_parallel_logrank.py $MC_ID 
+# python3 simulation_experiment_aug_parallel_logrank.py $MC_ID 

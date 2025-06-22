@@ -98,12 +98,12 @@ def run(MC_id):
     scale_C = 2.5
     scale_C_indep = 3.9
     feature_types_list = ["real", "cat"]
-    independent = True
+    independent = False
     data_types_create = True
 
 
     metric_optuna = "log_rank_test"
-    dataset_name = "Simulations_4"
+    dataset_name = "Simulations_4_dep"
     base_path = prepare_dataset_dirs(dataset_name)
     param_file = os.path.join(base_path, "params.txt")
     save_parameters(param_file, {
