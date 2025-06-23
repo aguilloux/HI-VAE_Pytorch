@@ -211,31 +211,31 @@ def run(MC_id):
         "data_types_create": data_types_create
     })
 
-    # Simulate data
-    control, _, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
-                                   n_features_bytype, n_active_features, p_treated, shape_T,
-                                   shape_C, scale_C, scale_C_indep, data_types_create, seed=0)
+    # # Simulate data
+    # control, _, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
+    #                                n_features_bytype, n_active_features, p_treated, shape_T,
+    #                                shape_C, scale_C, scale_C_indep, data_types_create, seed=0)
 
-    control = control.drop(columns='treatment')
-    data_file_control = os.path.join(base_path, "data_control.csv")
-    feat_types_file_control = os.path.join(base_path, "data_types_control.csv")
-    # If the dataset has no missing data, leave the "miss_file" variable empty
-    miss_file = os.path.join(base_path, "Missing.csv")
-    true_miss_file = None
+    # control = control.drop(columns='treatment')
+    # data_file_control = os.path.join(base_path, "data_control.csv")
+    # feat_types_file_control = os.path.join(base_path, "data_types_control.csv")
+    # # If the dataset has no missing data, leave the "miss_file" variable empty
+    # miss_file = os.path.join(base_path, "Missing.csv")
+    # true_miss_file = None
 
-    control.to_csv(data_file_control, index=False, header=False)
-    types.to_csv(feat_types_file_control, index=False)
-    # Load and transform control data
-    df_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control,
-                                                                                                                feat_types_file_control,
-                                                                                                                miss_file, true_miss_file)
-    data_init_control_encoded = torch.from_numpy(df_init_control_encoded.values)
-    data_init_control = data_processing.discrete_variables_transformation(data_init_control_encoded, feat_types_dict)
-    fnames = types['name'][:-1].tolist() + ["time", "censor"]
-    # Format data in dataframe
-    df_init_control = pd.DataFrame(data_init_control.numpy(), columns=fnames)
-    # Update the data
-    df_init_control["treatment"] = 0
+    # control.to_csv(data_file_control, index=False, header=False)
+    # types.to_csv(feat_types_file_control, index=False)
+    # # Load and transform control data
+    # df_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control,
+    #                                                                                                             feat_types_file_control,
+    #                                                                                                             miss_file, true_miss_file)
+    # data_init_control_encoded = torch.from_numpy(df_init_control_encoded.values)
+    # data_init_control = data_processing.discrete_variables_transformation(data_init_control_encoded, feat_types_dict)
+    # fnames = types['name'][:-1].tolist() + ["time", "censor"]
+    # # Format data in dataframe
+    # df_init_control = pd.DataFrame(data_init_control.numpy(), columns=fnames)
+    # # Update the data
+    # df_init_control["treatment"] = 0
 
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
@@ -262,19 +262,19 @@ def run(MC_id):
             best_params_dict[generator_name] = json.load(f)
 
   
-    # COMPARE THE RESULTS BETWEEN THE BEST PARAMS WITH DEFAULT ONES
-    res_file = "./dataset/" + dataset_name + "/hyperopt_independent_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + ".jpeg"
-    verify_hyperopt(generators = generators_sel,
-                    data_hi_vae = df_init_control_encoded,
-                    data = data_init_control,
-                    miss_mask = miss_mask_control,
-                    true_miss_mask = true_miss_mask_control,
-                    feat_types_dict = feat_types_dict,
-                    n_generated_dataset = n_generated_dataset,
-                    columns = fnames,
-                    res_file = res_file,
-                    best_params_dict = best_params_dict,
-                    epochs=epochs)
+    # # COMPARE THE RESULTS BETWEEN THE BEST PARAMS WITH DEFAULT ONES
+    # res_file = "./dataset/" + dataset_name + "/hyperopt_independent_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + ".jpeg"
+    # verify_hyperopt(generators = generators_sel,
+    #                 data_hi_vae = df_init_control_encoded,
+    #                 data = data_init_control,
+    #                 miss_mask = miss_mask_control,
+    #                 true_miss_mask = true_miss_mask_control,
+    #                 feat_types_dict = feat_types_dict,
+    #                 n_generated_dataset = n_generated_dataset,
+    #                 columns = fnames,
+    #                 res_file = res_file,
+    #                 best_params_dict = best_params_dict,
+    #                 epochs=epochs)
 
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 10
@@ -331,9 +331,10 @@ def run(MC_id):
         # Load and transform control data
         df_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control,
                                                                                                                            feat_types_file_control,
-                                                                                                                           miss_file, true_miss_file)
+                                                                                                                            miss_file="Missing.csv", true_miss_file=None)
         data_init_control_encoded = torch.from_numpy(df_init_control_encoded.values)
         data_init_control = data_processing.discrete_variables_transformation(data_init_control_encoded, feat_types_dict)
+        
         # Format data in dataframe
         fnames = types['name'][:-1].tolist() + ["time", "censor"]
         # Format data in dataframe
@@ -393,7 +394,7 @@ def run(MC_id):
                 types.to_csv(feat_types_file_treated)
 
                 # Load and transform treated data
-                df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file, true_miss_file)
+                df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file="Missing.csv", true_miss_file=None)
                 data_init_treated_encoded = torch.from_numpy(df_init_treated_encoded.values)
                 data_init_treated = data_processing.discrete_variables_transformation(data_init_treated_encoded, feat_types_dict)
                 # Format data in dataframe

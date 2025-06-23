@@ -262,19 +262,19 @@ def run(MC_id):
             best_params_dict[generator_name] = json.load(f)
 
   
-    # COMPARE THE RESULTS BETWEEN THE BEST PARAMS WITH DEFAULT ONES
-    res_file = "./dataset/" + dataset_name + "/hyperopt_independent_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + ".jpeg"
-    verify_hyperopt(generators = generators_sel,
-                    data_hi_vae = df_init_control_encoded,
-                    data = data_init_control,
-                    miss_mask = miss_mask_control,
-                    true_miss_mask = true_miss_mask_control,
-                    feat_types_dict = feat_types_dict,
-                    n_generated_dataset = n_generated_dataset,
-                    columns = fnames,
-                    res_file = res_file,
-                    best_params_dict = best_params_dict,
-                    epochs=epochs)
+    # # COMPARE THE RESULTS BETWEEN THE BEST PARAMS WITH DEFAULT ONES
+    # res_file = "./dataset/" + dataset_name + "/hyperopt_independent_n_samples_" + str(n_samples) + "n_features_bytype_" + str(n_features_bytype) + ".jpeg"
+    # verify_hyperopt(generators = generators_sel,
+    #                 data_hi_vae = df_init_control_encoded,
+    #                 data = data_init_control,
+    #                 miss_mask = miss_mask_control,
+    #                 true_miss_mask = true_miss_mask_control,
+    #                 feat_types_dict = feat_types_dict,
+    #                 n_generated_dataset = n_generated_dataset,
+    #                 columns = fnames,
+    #                 res_file = res_file,
+    #                 best_params_dict = best_params_dict,
+    #                 epochs=epochs)
 
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 10
