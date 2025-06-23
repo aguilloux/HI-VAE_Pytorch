@@ -34,7 +34,7 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
         for n_generated_sample_ in n_generated_sample:
             est_data_gen_transformed_survae = []
             for j in range(n_generated_dataset):
-                out = model_survae.generate(count=n_generated_sample)
+                out = model_survae.generate(count=n_generated_sample_)
                 est_data_gen_transformed_survae.append(out)
             est_data_gen_transformed_survae_list.append(est_data_gen_transformed_survae)
 
