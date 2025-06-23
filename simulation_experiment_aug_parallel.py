@@ -394,7 +394,7 @@ def run(MC_id):
                 types.to_csv(feat_types_file_treated)
 
                 # Load and transform treated data
-                df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file, true_miss_file)
+                df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file="Missing.csv", true_miss_file=None)
                 data_init_treated_encoded = torch.from_numpy(df_init_treated_encoded.values)
                 data_init_treated = data_processing.discrete_variables_transformation(data_init_treated_encoded, feat_types_dict)
                 # Format data in dataframe
