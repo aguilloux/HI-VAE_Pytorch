@@ -189,11 +189,8 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
 
     if n_generated_sample is None:
         n_generated_sample = data.shape[0]
-        # data_ext = data
-        # miss_mask_ext = miss_mask
-        indices = torch.randint(0, data.shape[0], (n_generated_sample,))  # random indices with replacement
-        data_ext = data[indices]
-        miss_mask_ext = miss_mask[indices]
+        data_ext = data
+        miss_mask_ext = miss_mask
     else:
         indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
         data_ext = data[indices]
