@@ -2,7 +2,7 @@
 #SBATCH --job-name=survkm_hyperopt_parallel
 #SBATCH --output=logs/hyperopt_%A_%a.out
 #SBATCH --error=logs/hyperopt_%A_%a.err
-#SBATCH --array=0  # one task per generator
+#SBATCH --array=0-3  # one task per generator
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=2-00:00:00
@@ -21,5 +21,5 @@ source activate hivae
 # Arguments
 GENERATOR_ID=${SLURM_ARRAY_TASK_ID}
 
-python3 simulation_hyperopt_compare_parallel.py $GENERATOR_ID 
-# python3 simulation_hyperopt_parallel.py $GENERATOR_ID 
+# python3 simulation_hyperopt_compare_parallel.py $GENERATOR_ID 
+python3 simulation_hyperopt_parallel.py $GENERATOR_ID 
