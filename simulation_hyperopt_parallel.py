@@ -36,7 +36,7 @@ def run(generator_name):
     scale_C = 2.5
     scale_C_indep = 3.9
     feature_types_list = ["real", "cat"]
-    independent = False
+    independent = True
     data_types_create = True
 
     control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
@@ -50,7 +50,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_4_dep"
+    dataset_name = "Simulations_5_indep"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -111,9 +111,8 @@ def run(generator_name):
     df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
 
     # Parameters of the optuna study
-    # multiplier_trial = 10 # multiplier for the number of trials
     metric_optuna = "survival_km_distance" # metric to optimize in optuna
-    # metric_optuna = "log_rank_test" # metric to optimize in optuna
+    method_hyperopt = "train_full_gen_full"
     n_splits = 5 # number of splits for cross-validation
     n_generated_dataset = 50 # number of generated datasets per fold to compute the metric
     name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect))
@@ -123,7 +122,6 @@ def run(generator_name):
                     "HI-VAE_lognormal" : surv_hivae,
                     "Surv-GAN" : surv_gan,
                     "Surv-VAE" : surv_vae}
-    
     
     # Set a unique working directory for this job
     original_dir, work_dir = setup_unique_working_dir("parallel_runs")
@@ -169,7 +167,8 @@ def run(generator_name):
                                                                                         generator_name=generator_name,
                                                                                         epochs=10000,
                                                                                         metric=metric_optuna,
-                                                                                        study_name=study_name)
+                                                                                        study_name=study_name, 
+                                                                                        method=method_hyperopt)
         best_params_dict[generator_name] = best_params
         study_dict[generator_name] = study
         with open(best_params_file, "w") as f:
@@ -183,7 +182,8 @@ def run(generator_name):
                                                                                         n_splits=n_splits,
                                                                                         n_trials=n_trials,
                                                                                         metric=metric_optuna,
-                                                                                        study_name=study_name)
+                                                                                        study_name=study_name, 
+                                                                                        method=method_hyperopt)
         best_params_dict[generator_name] = best_params
         study_dict[generator_name] = study
         with open(best_params_file, "w") as f:

@@ -226,9 +226,62 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
         est_data_gen_transformed = torch.cat(est_data_gen_transformed, dim=0)
 
         return est_data_gen_transformed
+    
+
+import utils
+import utils.likelihood
+import utils.data_processing
+import utils.theta_estimation
+
+def generate_from_prior_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample=None):
+
+    # Compute real missing mask
+    miss_mask = torch.multiply(miss_mask, true_miss_mask)
+    if n_generated_sample is None:
+        n_generated_sample = data.shape[0]
+
+    with torch.no_grad():
+        data_list, miss_list = data_processing.next_batch(data, feat_types_dict, miss_mask, data.shape[0], 0)
+        data_list_observed = [data * miss_list[:, i].view(data.shape[0], 1) for i, data in enumerate(data_list)]
+
+        X_list, normalization_params = utils.data_processing.batch_normalization(data_list_observed, vae_model.feat_types_list, miss_list)
+
+        s_samples = torch.randint(0, vae_model.s_dim, (n_generated_sample,))
+        samples_s = torch.nn.functional.one_hot(s_samples, num_classes=vae_model.s_dim).float()
+
+        mean_pz, log_var_pz = utils.statistic.z_prior_GMM(samples_s, vae_model.z_distribution_layer)
+        eps = torch.randn_like(mean_pz)
+        samples_z = mean_pz + torch.exp(log_var_pz / 2) * eps  # mean_pz + eps
+        samples_y = vae_model.y_layer(samples_z)
+
+        grouped_samples_y = utils.data_processing.y_partition(samples_y, vae_model.feat_types_list, vae_model.y_dim_partition)
+
+        # Compute θ parameters    
+        theta = utils.theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples_s, vae_model.feat_types_list, miss_list, vae_model.theta_layer)
+
+        # Compute log-likelihood and reconstructed data
+        p_params_x, log_p_x, log_p_x_missing, samples_x = utils.likelihood.loglik_evaluation(
+            data_list, vae_model.feat_types_list, miss_list, theta, normalization_params, n_generated_dataset
+        )
+
+        samples = {"s": samples_s, "z": samples_z, "y": samples_y, "x": samples_x}
+
+        #Concatenate samples in arrays
+        est_data_gen = statistic.samples_concatenation([samples])[-1]
+        est_data_gen_transformed = []
+        for j in range(n_generated_dataset):
+            data_trans = data_processing.discrete_variables_transformation(est_data_gen[j], feat_types_dict)
+            data_trans = data_processing.survival_variables_transformation(data_trans, feat_types_dict)
+            est_data_gen_transformed.append(data_trans.unsqueeze(0))
+            
+        est_data_gen_transformed = torch.cat(est_data_gen_transformed, dim=0)
+
+        return est_data_gen_transformed
+
+
 
 def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
-        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}, epochs = 1000, verbose = True, plot = False):
+        params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}, epochs = 1000, verbose = True, plot = False, gen_from_prior=False):
 
     set_seed()
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
@@ -271,7 +324,11 @@ def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_
 
         return est_data_gen_transformed_list
     else:
-        est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+        if gen_from_prior:
+            est_data_gen_transformed = generate_from_prior_HIVAE(model_hivae, data, miss_mask, true_miss_mask, 
+                                                                 feat_types_dict, n_generated_dataset, n_generated_sample)
+        else:
+            est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                     feat_types_dict, n_generated_dataset, n_generated_sample)
 
         if plot:
@@ -320,9 +377,9 @@ def hyperparameter_space(data, n_splits, generator_name):
     hp_space = [
         CategoricalDistribution(name="lr", choices=[1e-3, 2e-4, 1e-4]),
         CategoricalDistribution(name="batch_size", choices=get_batchsize(n_samples, n_splits)),
-        IntegerDistribution(name="z_dim", low=5, high=100, step=10),
-        IntegerDistribution(name="y_dim", low=5, high=100, step=10),
-        IntegerDistribution(name="s_dim", low=5, high=100, step=10),
+        IntegerDistribution(name="z_dim", low=5, high=100, step=5),
+        IntegerDistribution(name="y_dim", low=10, high=200, step=10),
+        IntegerDistribution(name="s_dim", low=10, high=200, step=10),
     ]
     if generator_name in ["HI-VAE_piecewise"]:
        hp_space.append(CategoricalDistribution(name="n_layers_surv_piecewise", choices=[1, 2]))
@@ -513,6 +570,11 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
     else: 
         sampler = optuna.samplers.TPESampler(seed=10)
         study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db', sampler=sampler)
+        if generator_name in ["HI-VAE_piecewise"]:
+            default_params = {"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}
+        else: 
+            default_params = {"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20}
+        study.enqueue_trial(default_params)
     study.optimize(objective, n_trials=n_trials)
     study.best_params  
 
