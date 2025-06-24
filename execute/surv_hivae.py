@@ -379,9 +379,9 @@ def hyperparameter_space(data, n_splits, generator_name):
     n_samples = data.shape[0]
     hp_space = [
         CategoricalDistribution(name="lr", choices=[1e-3, 2e-4, 1e-4]),
-        CategoricalDistribution(name="batch_size", choices=get_batchsize(n_samples, n_splits)),
+        CategoricalDistribution(name="batch_size", choices=get_batchsize(n_samples, n_splits) + [100]),
         IntegerDistribution(name="z_dim", low=5, high=100, step=5),
-        IntegerDistribution(name="y_dim", low=10, high=200, step=10),
+        IntegerDistribution(name="y_dim", low=10, high=200, step=5),
         IntegerDistribution(name="s_dim", low=10, high=200, step=10),
     ]
     if generator_name in ["HI-VAE_piecewise"]:
@@ -578,6 +578,7 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
         else: 
             default_params = {"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20}
         study.enqueue_trial(default_params)
+        print("Enqueued trial:", study.get_trials(deepcopy=False))
     study.optimize(objective, n_trials=n_trials)
     study.best_params  
 
