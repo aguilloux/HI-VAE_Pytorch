@@ -18,6 +18,66 @@ sns.set(style="whitegrid", font="STIXGeneral", context="talk", palette="colorbli
 from sksurv.nonparametric import kaplan_meier_estimator
 from lifelines import KaplanMeierFitter
 
+
+
+def plot_data_compare(data_list, feat_types_dict, feat_comparison_name="group"):
+    """
+    Visualize features across multiple groups using violin/count plots.
+    
+    Args:
+        data_list (list of pd.DataFrame): List of dataframes to compare.
+        feat_types_dict (list of dict): Feature descriptions with keys: 'name', 'type', 'dim'.
+        feat_comparison_name (str): Column name indicating group (automatically added).
+    """
+    # Concaténer tous les DataFrames et ajouter l'information de groupe
+    # combined_data = []
+    # for i, df in enumerate(data_list):
+    #     df_copy = df.copy()
+    #     df_copy[feat_comparison_name] = f"group_{i}"
+    #     combined_data.append(df_copy)
+    
+    full_data = pd.concat(data_list, ignore_index=True)
+
+    num_features = len(feat_types_dict) 
+    n_cols = num_features // 2 + num_features % 2
+    _, axes = plt.subplots(n_cols, 2, figsize=(18, 2.5 * num_features))
+    axes = axes.flatten()
+    
+    for i, feature in enumerate(feat_types_dict):
+        ax = axes[i]
+        feat_name = feature['name']
+        feature_type = feature['type']
+        
+        if feature_type in ['cat', 'ordinal']:
+            # full_data[feat_comparison_name] = full_data[feat_comparison_name].astype("category")
+            # if feat_types_dict[i]["nclass"] == 2:
+            #     full_data[feat_name] = pd.Categorical(full_data[feat_name], categories=[0, 1])
+            sns.countplot(data=full_data, x=feat_name, hue=feat_comparison_name, alpha=0.8, ax=ax, stat="percent")
+            ax.set_title(f"Count plot of {feat_name} ({feature_type})", fontsize=14, fontweight="bold")
+            ax.set_xlabel("")
+            ax.set_ylabel("Count")
+
+        
+        elif feature_type.startswith("surv"):
+            print(f"Skipping survival-type feature '{feat_name}' for plotting.")
+            ax.set_visible(False)
+
+        else:
+            sns.violinplot(data=full_data, x=feat_comparison_name, y=feat_name, ax=ax)
+            ax.set_title(f"Distribution of {feat_name} ({feature_type})", fontsize=14, fontweight="bold")
+            ax.set_xlabel(feat_comparison_name)
+            ax.set_ylabel(feat_name)
+
+        ax.grid(True)
+
+    # Supprimer axes inutilisés s’il y en a
+    for j in range(i + 1, len(axes)):
+        axes[j].set_visible(False)
+
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_data(data, feat_types_dict,feat_comparison_name=None):
     """
     Visualize different data types.

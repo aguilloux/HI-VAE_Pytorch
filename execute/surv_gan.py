@@ -113,7 +113,8 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         print("This optuna study ({}) already exists. We load the study from the existing file.".format(db_file))
         study = optuna.load_study(study_name=study_name, storage='sqlite:///'+study_name+'.db')
     else: 
-        study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db')
+        sampler = optuna.samplers.TPESampler(seed=10)
+        study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db', sampler=sampler)
     study.optimize(objective, n_trials=n_trials)
     study.best_params  
 
