@@ -207,8 +207,10 @@ def setup_unique_working_dir(base_dir="experiments"):
 
 if __name__ == "__main__":
     # generators_sel = ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["HI-VAE_weibull", "Surv-VAE"]
-    methods_hyperopt_list = ["train_full_gen_full", "train_train_gen_full", "train_train_gen_test"]
+    # generators_sel = ["HI-VAE_weibull", "Surv-VAE"]
+    # methods_hyperopt_list = ["train_full_gen_full", "train_train_gen_full", "train_train_gen_test"]
+    generators_sel = ["Surv-VAE"]
+    methods_hyperopt_list = ["train_full_gen_full"]
 
     id = int(sys.argv[1])  # id from 0 to 5
     combinations = list(product(generators_sel, methods_hyperopt_list))

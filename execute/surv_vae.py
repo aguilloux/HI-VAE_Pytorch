@@ -76,6 +76,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         try:
             if method == 'train_full_gen_full':
                 full_data_loader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
+                model_survae_trial = model_survae(**params)
                 # train on full data
                 model_survae_trial.fit(full_data_loader)
                 for j in range(n_generated_dataset):
