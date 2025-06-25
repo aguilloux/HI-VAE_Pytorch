@@ -76,7 +76,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         set_seed()
         model = type(Plugins().get("survival_gan"))
         hp_space = model.hyperparameter_space()
-        hp_space[0].high = 3  # speed up for now
+        hp_space[0].high = 2  # speed up for now
         params = suggest_all(trial, hp_space)
         ID = f"trial_{trial.number}"
         print(ID)
