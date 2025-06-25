@@ -54,8 +54,8 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
 
         return est_data_gen_transformed_survgan_list
     else:
-        # if n_generated_sample is None:
-        #     n_generated_sample = data.shape[0]
+        if n_generated_sample is None:
+            n_generated_sample = data.shape[0]
         #     cond_gen = df[[target_column]]
         # else:
         indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
