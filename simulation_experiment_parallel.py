@@ -103,7 +103,7 @@ def run(MC_id):
 
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_5_indep"
+    dataset_name = "Simulations_6_indep"
     base_path = prepare_dataset_dirs(dataset_name)
     param_file = os.path.join(base_path, "params.txt")
     save_parameters(param_file, {
@@ -147,7 +147,7 @@ def run(MC_id):
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 10
     treat_effects = np.arange(0., 1.1, 0.2)
-    n_generated_dataset = 50
+    n_generated_dataset = 200
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance',
                                 'Detection XGB', 'NNDR', 'K-map score']
 

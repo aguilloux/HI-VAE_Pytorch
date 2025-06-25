@@ -84,8 +84,8 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 for j in range(n_generated_dataset):
                     # generate as many data as in the all dataset
                     gen_data = model_survae_trial.generate(count=df.shape[0])
-                    df_gen_data = gen_data.dataframe()
                     if metric == 'log_rank_test':
+                        df_gen_data = gen_data.dataframe()
                         score_j = metrics.compute_logrank_test(df, df_gen_data)
                     else: # 'survival_km_distance'
                         clear_cache()
