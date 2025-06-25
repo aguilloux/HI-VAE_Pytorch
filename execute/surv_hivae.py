@@ -379,7 +379,7 @@ def hyperparameter_space(data, n_splits, generator_name):
     hp_space = [
         CategoricalDistribution(name="lr", choices=[1e-3, 2e-4, 1e-4]),
         CategoricalDistribution(name="batch_size", choices=get_batchsize(n_samples, n_splits) + [100]),
-        IntegerDistribution(name="z_dim", low=5, high=100, step=5),
+        IntegerDistribution(name="z_dim", low=10, high=200, step=10),
         IntegerDistribution(name="y_dim", low=10, high=200, step=5),
         IntegerDistribution(name="s_dim", low=10, high=200, step=10),
     ]
