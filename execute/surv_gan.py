@@ -48,8 +48,10 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
     else:
         if n_generated_sample is None:
             n_generated_sample = data.shape[0]
-        indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
-        cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
+            cond_gen = df[[target_column]]
+        else:
+            indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
+            cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
         est_data_gen_transformed_survgan = []
         for j in range(n_generated_dataset):
             out = model_survgan.generate(count=n_generated_sample, cond=cond_gen)
@@ -164,6 +166,19 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
     else: 
         sampler = optuna.samplers.TPESampler(seed=10)
         study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db', sampler=sampler)
+        default_params = {'generator_n_layers_hidden': 2, 
+                          'generator_n_units_hidden': 500, 
+                          'generator_nonlin': 'relu', 
+                          'generator_dropout': 0.1, 
+                          'discriminator_n_layers_hidden': 2, 
+                          'discriminator_n_units_hidden': 500, 
+                          'discriminator_nonlin': 'leaky_relu', 
+                          'discriminator_dropout': 0.1, 
+                          'lr':  1e-3, 
+                          'weight_decay': 1e-3, 
+                          'encoder_max_clusters': 5}
+        study.enqueue_trial(default_params)
+        print("Enqueued trial:", study.get_trials(deepcopy=False))
     study.optimize(objective, n_trials=n_trials)
     study.best_params  
 

@@ -169,6 +169,21 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
     else: 
         sampler = optuna.samplers.TPESampler(seed=10)
         study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db', sampler=sampler)
+        default_params = {'n_iter': 1000, 
+                          'lr': 1e-3, 
+                          'decoder_n_layers_hidden': 3, 
+                          'weight_decay': 1e-5,
+                          'batch_size': 200, 
+                          'n_units_embedding': 500, 
+                          'decoder_n_units_hidden': 500, 
+                          'decoder_nonlin': 'leaky_relu', 
+                          'decoder_dropout': 0, 
+                          'encoder_n_layers_hidden': 3, 
+                          'encoder_n_units_hidden': 500, 
+                          'encoder_nonlin': 'leaky_relu',
+                          'encoder_dropout': 0.1}
+        study.enqueue_trial(default_params)
+        print("Enqueued trial:", study.get_trials(deepcopy=False))
     study.optimize(objective, n_trials=n_trials)
     study.best_params  
 
