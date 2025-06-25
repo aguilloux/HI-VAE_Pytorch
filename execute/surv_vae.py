@@ -70,6 +70,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         hp_space = model_survae.hyperparameter_space()
         # hp_space[0].high = 100  # speed up for now
         hp_space[3].choices = [1e-3, 1e-4, 1e-5]
+        hp_space[4].choices = [64, 128, 200, 256, 512]
         params = suggest_all(trial, hp_space)
         ID = f"trial_{trial.number}"
         print(ID)
