@@ -50,7 +50,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_5_indep"
+    dataset_name = "Simulations_6_indep"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -114,7 +114,7 @@ def run(generator_name):
     metric_optuna = "survival_km_distance" # metric to optimize in optuna
     method_hyperopt = "train_full_gen_full"
     n_splits = 5 # number of splits for cross-validation
-    n_generated_dataset = 50 # number of generated datasets per fold to compute the metric
+    n_generated_dataset = 200 # number of generated datasets per fold to compute the metric
     name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect))
 
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
@@ -150,9 +150,9 @@ def run(generator_name):
         feat_types_dict_ext = feat_types_dict.copy()
         for i in range(len(feat_types_dict)):
             if feat_types_dict_ext[i]['name'] == "survcens":
-                if generator_name in["HI-VAE_weibull"]:
+                if generator_name in ["HI-VAE_weibull"]:
                     feat_types_dict_ext[i]["type"] = 'surv_weibull'
-                elif generator_name in["HI-VAE_lognormal"]:
+                elif generator_name in ["HI-VAE_lognormal"]:
                     feat_types_dict_ext[i]["type"] = 'surv'
                 else:
                     feat_types_dict_ext[i]["type"] = 'surv_piecewise'
@@ -204,6 +204,7 @@ def setup_unique_working_dir(base_dir="experiments"):
 
 if __name__ == "__main__":
     # generators_sel = ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])

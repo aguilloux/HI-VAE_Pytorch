@@ -235,6 +235,8 @@ import utils.theta_estimation
 
 def generate_from_prior_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample=None):
 
+    # data is just used to compute the normalization_params
+
     # Compute real missing mask
     miss_mask = torch.multiply(miss_mask, true_miss_mask)
     if n_generated_sample is None:
@@ -415,7 +417,7 @@ def get_batchsize(n_samples, n_splits):
 
     return batch_size
 
-def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, study_name='optuna_study_surv_hivae', metric='survival_km_distance', method=''):
+def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, study_name='optuna_study_surv_hivae', metric='survival_km_distance', method='', gen_from_prior=False):
    
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
     miss_mask = miss_mask
@@ -452,7 +454,12 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
                             n_layers_surv_piecewise=n_layers)
                 model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
                 # Generate
-                est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+                if gen_from_prior:
+                    est_data_gen_transformed = generate_from_prior_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+                                                                feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0])
+                
+                else:
+                    est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                                 feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0])
                 for j in range(n_generated_dataset):
                     df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
@@ -497,9 +504,12 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
                                     n_layers_surv_piecewise=n_layers)
                         model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
                         # Generate
-                        est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+                        if gen_from_prior:
+                            est_data_gen_transformed = generate_from_prior_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                                         feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0])
-
+                        else:
+                            est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+                                                                        feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0])
                         score_k = []
                         for j in range(n_generated_dataset):
                             df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
@@ -533,7 +543,11 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
                                     n_layers_surv_piecewise=n_layers)
                         model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
                         # Generate
-                        est_data_gen_transformed = generate_from_HIVAE(model_hivae, test_data, test_miss_mask, test_true_miss_mask,
+                        if gen_from_prior:
+                            est_data_gen_transformed = generate_from_prior_HIVAE(model_hivae, test_data, test_miss_mask, test_true_miss_mask,
+                                                                        feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=test_data.shape[0])
+                        else:
+                            est_data_gen_transformed = generate_from_HIVAE(model_hivae, test_data, test_miss_mask, test_true_miss_mask,
                                                                         feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=test_data.shape[0])
 
                         score_k = []

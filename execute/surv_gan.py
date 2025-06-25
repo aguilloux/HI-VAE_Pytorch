@@ -9,12 +9,20 @@ from utils import metrics
 import numpy as np
 import optuna
 import os
+import random
 import torch
+
+def set_seed(seed=1):
+    random.seed(seed)                            # Python built-in
+    np.random.seed(seed)                         # NumPy
+    torch.manual_seed(seed)                      # PyTorch (CPU)
 
 def run(data, columns, target_column, time_to_event_column, n_generated_dataset, n_generated_sample=None, params=None):
     """
     Use a conditional GAN for survival data generation
     """
+
+    set_seed()
     
     # Define data and model
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
@@ -46,12 +54,12 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
 
         return est_data_gen_transformed_survgan_list
     else:
-        if n_generated_sample is None:
-            n_generated_sample = data.shape[0]
-            cond_gen = df[[target_column]]
-        else:
-            indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
-            cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
+        # if n_generated_sample is None:
+        #     n_generated_sample = data.shape[0]
+        #     cond_gen = df[[target_column]]
+        # else:
+        indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
+        cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
         est_data_gen_transformed_survgan = []
         for j in range(n_generated_dataset):
             out = model_survgan.generate(count=n_generated_sample, cond=cond_gen)
@@ -65,6 +73,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
  
     def objective(trial: optuna.Trial):
+        set_seed()
         model = type(Plugins().get("survival_gan"))
         hp_space = model.hyperparameter_space()
         hp_space[0].high = 3  # speed up for now
