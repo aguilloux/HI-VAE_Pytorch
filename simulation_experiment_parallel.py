@@ -98,12 +98,12 @@ def run(MC_id):
     scale_C = 2.5
     scale_C_indep = 3.9
     feature_types_list = ["real", "cat"]
-    independent = False
+    independent = True
     data_types_create = True
 
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_4_dep"
+    dataset_name = "Simulations_5_indep"
     base_path = prepare_dataset_dirs(dataset_name)
     param_file = os.path.join(base_path, "params.txt")
     save_parameters(param_file, {
@@ -154,6 +154,7 @@ def run(MC_id):
     # Initialize storage for metrics and results
     synthcity_metrics_res_dict = {generator_name: pd.DataFrame() for generator_name in generators_sel}
     log_p_value_gen_dict = {generator_name: [] for generator_name in generators_sel}
+    log_p_value_control_dict = {generator_name: [] for generator_name in generators_sel}
     est_cox_coef_gen_dict = {generator_name: [] for generator_name in generators_sel}
     est_cox_coef_se_gen_dict = {generator_name: [] for generator_name in generators_sel}
     
@@ -281,17 +282,20 @@ def run(MC_id):
             # For each generator, compute the log-rank test p-values and Cox coefficients for generated control group vs initial treated group
             for generator_name in generators_sel:
                 log_p_value_gen_list = []
+                log_p_value_control_list = []
                 est_cox_coef_gen = []
                 est_cox_coef_se_gen = []
                 for i in range(n_generated_dataset):
                     df_gen_control = df_gen_control_dict[generator_name][i]
                     log_p_value_gen_list.append(compute_logrank_test(df_gen_control, treated))
+                    log_p_value_control_list.append(compute_logrank_test(df_gen_control, control))
                     df_gen = pd.concat([df_gen_control, df_init_treated], ignore_index=True)
                     coef_gen, _, _, se_gen = fit_cox_model(df_gen, columns)
                     est_cox_coef_gen.append(coef_gen[0])
                     est_cox_coef_se_gen.append(se_gen[0])
 
                 log_p_value_gen_dict[generator_name] += log_p_value_gen_list
+                log_p_value_control_dict[generator_name] += log_p_value_control_list
                 est_cox_coef_gen_dict[generator_name] += est_cox_coef_gen
                 est_cox_coef_se_gen_dict[generator_name] += est_cox_coef_se_gen
 
@@ -305,6 +309,7 @@ def run(MC_id):
     # Add metrics and coefficients for each generator
     for generator_name in generators_sel:
         results[f"log_pvalue_{generator_name}"] = log_p_value_gen_dict[generator_name]
+        results[f"log_pvalue_control_{generator_name}"] = log_p_value_control_dict[generator_name]
         results[f"est_cox_coef_{generator_name}"] = est_cox_coef_gen_dict[generator_name]
         results[f"est_cox_coef_se_{generator_name}"] = est_cox_coef_se_gen_dict[generator_name]
         for metric in synthcity_metrics_sel:
