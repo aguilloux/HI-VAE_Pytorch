@@ -461,23 +461,40 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
                 else:
                     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                                 feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0])
-                for j in range(n_generated_dataset):
-                    df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
-                    if metric == 'log_rank_test':
-                        score_j = metrics.compute_logrank_test(df, df_gen_data)
-                    else: # 'survival_km_distance'
-                        gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column = "censor", time_to_event_column = "time")
-                        clear_cache()
-                        evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
-                                                        X_syn=gen_data, 
-                                                        reduction='mean', # default mean
-                                                        n_histogram_bins=10, # default 10
-                                                        n_folds=1,
-                                                        metrics={'stats': ['survival_km_distance']},
-                                                        task_type='survival_analysis', 
-                                                        use_cache=True)
-                        score_j = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
-                    scores.append(score_j)
+                
+                tensor_list = list(est_data_gen_transformed)
+                full_data_tensor = torch.cat(tensor_list, dim=0)
+                df_gen_data = pd.DataFrame(full_data_tensor.numpy(), columns=columns)
+                gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column="censor", time_to_event_column="time")
+                clear_cache()
+                evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                                                X_syn=gen_data, 
+                                                reduction='mean', # default mean
+                                                n_histogram_bins=10, # default 10
+                                                n_folds=1,
+                                                metrics={'stats': ['survival_km_distance']},
+                                                task_type='survival_analysis', 
+                                                use_cache=True)
+                scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+
+
+                # for j in range(n_generated_dataset):
+                #     df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
+                #     if metric == 'log_rank_test':
+                #         score_j = metrics.compute_logrank_test(df, df_gen_data)
+                #     else: # 'survival_km_distance'
+                #         gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column = "censor", time_to_event_column = "time")
+                #         clear_cache()
+                #         evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                #                                         X_syn=gen_data, 
+                #                                         reduction='mean', # default mean
+                #                                         n_histogram_bins=10, # default 10
+                #                                         n_folds=1,
+                #                                         metrics={'stats': ['survival_km_distance']},
+                #                                         task_type='survival_analysis', 
+                #                                         use_cache=True)
+                #         score_j = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+                #     scores.append(score_j)
                 
             else:
                 # k-fold cross-validation

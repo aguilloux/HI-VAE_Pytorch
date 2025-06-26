@@ -102,7 +102,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
     dataloader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
 
     def objective(trial: optuna.Trial):
-        # set_seed()
+        set_seed()
         model = type(Plugins().get("survival_gan"))
         hp_space = model.hyperparameter_space()
         hp_space[0].high = 3  # speed up for now
@@ -113,14 +113,10 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         try:
             if method == 'train_full_gen_full':
                 
-                # full_data_loader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
                 # cond = df[[target_column]]
-
-                # print("training....")
                 # model_trial = model(**params)
                 # model_trial.fit(dataloader, cond=cond)
 
-                # print("generation....")
                 # cond_repeat = pd.concat([cond for i in range(n_generated_dataset)])
                 # gen_data = model_trial.generate(count=df.shape[0]*n_generated_dataset, cond=cond_repeat)
                 # # assert not gen_data.dataframe().isna().any().any(), "Le DataFrame contient des valeurs NaN"
@@ -128,7 +124,6 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 
                 gen_data = run_with_timeout_mp(model, params, dataloader, df.shape[0]*n_generated_dataset, df[[target_column]], n_generated_dataset, timeout=120)
 
-                # print("evaluation....")
                 evaluation = Metrics().evaluate(X_gt=dataloader, # can be dataloaders or dataframes
                                                 X_syn=gen_data, 
                                                 reduction='mean', # default mean
@@ -139,6 +134,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                                                 use_cache=True)
                 scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
 
+                # full_data_loader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
                 # for j in range(n_generated_dataset):
                 #     # generate as many data as in the all dataset
                 #     print("generation....")
