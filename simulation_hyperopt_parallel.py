@@ -50,7 +50,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_6_indep"
+    dataset_name = "Simulations_6_indep_bis"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -99,7 +99,6 @@ def run(generator_name):
     fnames = types['name'][:-1].tolist()
     fnames.append("time")#.append("censor")
     fnames.append("censor")
-
 
     # Format data in dataframe
     df_init_treated = pd.DataFrame(data_init_treated.numpy(), columns=fnames)
@@ -213,7 +212,6 @@ if __name__ == "__main__":
     # generators_sel = ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["Surv-GAN"]
-    # generators_sel = ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["Surv-GAN", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])

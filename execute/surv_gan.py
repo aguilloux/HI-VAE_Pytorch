@@ -76,7 +76,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         set_seed()
         model = type(Plugins().get("survival_gan"))
         hp_space = model.hyperparameter_space()
-        hp_space[0].high = 2  # speed up for now
+        hp_space[0].high = 3  # speed up for now
         params = suggest_all(trial, hp_space)
         ID = f"trial_{trial.number}"
         print(ID)
@@ -87,24 +87,38 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 cond = df[[target_column]]
                 model_trial = model(**params)
                 model_trial.fit(full_data_loader, cond=cond)
-                for j in range(n_generated_dataset):
-                    # generate as many data as in the all dataset
-                    gen_data = model_trial.generate(count=df.shape[0], cond=cond)
-                    if metric == 'log_rank_test':
-                        df_gen_data = gen_data.dataframe()
-                        score_j = metrics.compute_logrank_test(df, df_gen_data)
-                    else: # 'survival_km_distance'
-                        clear_cache()
-                        evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
-                                                        X_syn=gen_data, 
-                                                        reduction='mean', # default mean
-                                                        n_histogram_bins=10, # default 10
-                                                        n_folds=1,
-                                                        metrics={'stats': ['survival_km_distance']},
-                                                        task_type='survival_analysis', 
-                                                        use_cache=True)
-                        score_j = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
-                    scores.append(score_j)
+
+                cond_repeat = pd.concat([cond for i in range(n_generated_dataset)])
+                gen_data = model_trial.generate(count=df.shape[0]*n_generated_dataset, cond=cond_repeat)
+                clear_cache()
+                evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                                                X_syn=gen_data, 
+                                                reduction='mean', # default mean
+                                                n_histogram_bins=10, # default 10
+                                                n_folds=1,
+                                                metrics={'stats': ['survival_km_distance']},
+                                                task_type='survival_analysis', 
+                                                use_cache=True)
+                scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+
+                # for j in range(n_generated_dataset):
+                #     # generate as many data as in the all dataset
+                #     gen_data = model_trial.generate(count=df.shape[0], cond=cond)
+                #     if metric == 'log_rank_test':
+                #         df_gen_data = gen_data.dataframe()
+                #         score_j = metrics.compute_logrank_test(df, df_gen_data)
+                #     else: # 'survival_km_distance'
+                #         clear_cache()
+                #         evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                #                                         X_syn=gen_data, 
+                #                                         reduction='mean', # default mean
+                #                                         n_histogram_bins=10, # default 10
+                #                                         n_folds=1,
+                #                                         metrics={'stats': ['survival_km_distance']},
+                #                                         task_type='survival_analysis', 
+                #                                         use_cache=True)
+                #         score_j = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+                #     scores.append(score_j)
             else:
             # k-fold cross-validation 
                 kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
