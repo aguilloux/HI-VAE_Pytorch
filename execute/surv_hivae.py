@@ -383,7 +383,7 @@ def hyperparameter_space(data, n_splits, generator_name):
         IntegerDistribution(name="y_dim", low=10, high=200, step=5),
         IntegerDistribution(name="s_dim", low=10, high=200, step=10),
     ]
-    if generator_name in ["HI-VAE_piecewise"]:
+    if generator_name in ["HI-VAE_piecewise", "HI-VAE_piecewise_prior"]:
        hp_space.append(CategoricalDistribution(name="n_layers_surv_piecewise", choices=[1, 2]))
        hp_space.append(CategoricalDistribution(name="n_intervals", choices=[5, 10, 15, 20]))
 
@@ -427,7 +427,7 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
         set_seed()
         hp_space = hyperparameter_space(df, n_splits, generator_name)
         params = suggest_all(trial, hp_space) # dict of hyperparameters
-        if generator_name in ["HI-VAE_piecewise"]:
+        if generator_name in ["HI-VAE_piecewise", "HI-VAE_piecewise_prior"]:
             intervals = get_intervals(df, params["n_intervals"])
             n_layers = params["n_layers_surv_piecewise"]
         else:
@@ -584,7 +584,7 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
     else: 
         sampler = optuna.samplers.TPESampler(seed=10)
         study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db', sampler=sampler)
-        if generator_name in ["HI-VAE_piecewise"]:
+        if generator_name in ["HI-VAE_piecewise", "HI-VAE_piecewise_prior"]:
             default_params = {"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}
         else: 
             default_params = {"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20}
@@ -606,7 +606,7 @@ def run_CV(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, 
     miss_mask = miss_mask
     true_miss_mask = true_miss_mask
         
-    if generator_name in ["HI-VAE_piecewise"]:
+    if generator_name in ["HI-VAE_piecewise", "HI-VAE_piecewise_prior"]:
         intervals = get_intervals(df, params["n_intervals"])
         n_layers = params["n_layers_surv_piecewise"]
     else:
