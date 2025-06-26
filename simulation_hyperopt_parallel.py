@@ -212,6 +212,6 @@ if __name__ == "__main__":
     # generators_sel = ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["Surv-GAN", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["Surv-GAN"] #, "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])
