@@ -125,7 +125,6 @@ def run(MC_id):
     # miss_file = os.path.join(base_path, "Missing.csv")
     # true_miss_file = None
 
-    # generators_sel = ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
