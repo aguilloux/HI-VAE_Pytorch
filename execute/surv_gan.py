@@ -112,7 +112,6 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         params = suggest_all(trial, hp_space)
         ID = f"trial_{trial.number}"
         print(ID)
-        print(params)
         scores = []
         try:
             if method == 'train_full_gen_full':
