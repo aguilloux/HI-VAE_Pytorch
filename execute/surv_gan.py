@@ -12,6 +12,37 @@ import os
 import random
 import torch
 
+import multiprocessing as mp
+
+def run_worker(return_dict, model, params, data, count, cond, n_generated_dataset):
+    # print("training....")
+    model_trial = model(**params)
+    model_trial.fit(data, cond=cond)
+    # print("generation....")
+    cond_repeat = pd.concat([cond for i in range(n_generated_dataset)])                
+    result = model_trial.generate(count=count, cond=cond_repeat)
+    return_dict["result"] = result
+
+def run_with_timeout_mp(model, params, data, count, cond, n_generated_dataset, timeout=60):
+    manager = mp.Manager()
+    return_dict = manager.dict()
+    p = mp.Process(target=run_worker, args=(return_dict, model, params, data, count, cond, n_generated_dataset))
+    p.start()
+    p.join(timeout)
+
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        print(f"Generation timed out after {timeout} seconds.")
+        raise optuna.TrialPruned()
+
+    # if "error" in return_dict:
+    #     print(f"Generation failed: {return_dict['error']}")
+    #     raise optuna.TrialPruned()
+    
+    return return_dict["result"]
+
+
 def set_seed(seed=1):
     random.seed(seed)                            # Python built-in
     np.random.seed(seed)                         # NumPy
@@ -71,7 +102,8 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
 def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_surv_gan', metric='survival_km_distance', method=''):
     
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
- 
+    dataloader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
+
     def objective(trial: optuna.Trial):
         # set_seed()
         model = type(Plugins().get("survival_gan"))
@@ -84,20 +116,24 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         scores = []
         try:
             if method == 'train_full_gen_full':
-                print("training....")
-                full_data_loader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
-                cond = df[[target_column]]
-                model_trial = model(**params)
-                model_trial.fit(full_data_loader, cond=cond)
-
-                print("generation....")
-                cond_repeat = pd.concat([cond for i in range(n_generated_dataset)])
-                gen_data = model_trial.generate(count=df.shape[0]*n_generated_dataset, cond=cond_repeat)
-                # assert not gen_data.dataframe().isna().any().any(), "Le DataFrame contient des valeurs NaN"
-                clear_cache()
                 
-                print("evaluation....")
-                evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                # full_data_loader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
+                # cond = df[[target_column]]
+
+                # print("training....")
+                # model_trial = model(**params)
+                # model_trial.fit(dataloader, cond=cond)
+
+                # print("generation....")
+                # cond_repeat = pd.concat([cond for i in range(n_generated_dataset)])
+                # gen_data = model_trial.generate(count=df.shape[0]*n_generated_dataset, cond=cond_repeat)
+                # # assert not gen_data.dataframe().isna().any().any(), "Le DataFrame contient des valeurs NaN"
+                # clear_cache()
+                
+                gen_data = run_with_timeout_mp(model, params, dataloader, df.shape[0]*n_generated_dataset, df[[target_column]], n_generated_dataset, timeout=120)
+
+                # print("evaluation....")
+                evaluation = Metrics().evaluate(X_gt=dataloader, # can be dataloaders or dataframes
                                                 X_syn=gen_data, 
                                                 reduction='mean', # default mean
                                                 n_histogram_bins=10, # default 10
