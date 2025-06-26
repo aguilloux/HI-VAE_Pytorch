@@ -50,7 +50,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_6_indep_bis"
+    dataset_name = "Simulations_6_indep"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
