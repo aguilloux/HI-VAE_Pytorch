@@ -36,10 +36,6 @@ def run_with_timeout_mp(model, params, data, count, cond, n_generated_dataset, t
         p.join()
         print(f"Generation timed out after {timeout} seconds.")
         raise optuna.TrialPruned()
-
-    # if "error" in return_dict:
-    #     print(f"Generation failed: {return_dict['error']}")
-    #     raise optuna.TrialPruned()
     
     return return_dict["result"]
 
