@@ -50,7 +50,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_6_indep_bis"
+    dataset_name = "Simulations_6_indep"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -114,7 +114,7 @@ def run(generator_name):
     metric_optuna = "survival_km_distance" # metric to optimize in optuna
     method_hyperopt = "train_full_gen_full"
     n_splits = 5 # number of splits for cross-validation
-    n_generated_dataset = 100 # number of generated datasets per fold to compute the metric
+    n_generated_dataset = 200 # number of generated datasets per fold to compute the metric
     name_config = "simu_N{}_nfeat{}_t{}".format(n_samples, n_features_bytype, int(treatment_effect))
 
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
