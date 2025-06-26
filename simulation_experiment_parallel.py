@@ -68,7 +68,7 @@ def adjust_feat_types_for_generator(generator_name, feat_types_dict):
     feat_types_dict_ext = [dict(ft) for ft in feat_types_dict]  # deep copy
     for d in feat_types_dict_ext:
         if d['name'] == "survcens":
-            if generator_name == "HI-VAE_weibull":
+            if generator_name == "HI-VAE_weibull" or generator_name == "HI-VAE_weibull_prior":
                 d["type"] = 'surv_weibull'
             elif generator_name == "HI-VAE_lognormal":
                 d["type"] = 'surv'
@@ -125,12 +125,14 @@ def run(MC_id):
     # miss_file = os.path.join(base_path, "Missing.csv")
     # true_miss_file = None
 
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]  #,"HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
                        "Surv-GAN" : surv_gan,
-                       "Surv-VAE" : surv_vae}
+                       "Surv-VAE" : surv_vae, 
+                       "HI-VAE_weibull_prior" : surv_hivae, 
+                       "HI-VAE_piecewise_prior" : surv_hivae}
 
     # BEST PARAMETERS
     best_params_dict = {}
@@ -213,11 +215,15 @@ def run(MC_id):
         # For each generator, perform the data generation with the best params
         for generator_name in generators_sel:
             best_params = best_params_dict[generator_name]
-            if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise"]:
+            if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
+                if generator_name in ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
+                    gen_from_prior = True
+                else:
+                    gen_from_prior = False
                 feat_types_dict_ext = adjust_feat_types_for_generator(generator_name, feat_types_dict)
                 data_gen_control = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control, 
                                                                        true_miss_mask_control, feat_types_dict_ext, 
-                                                                       n_generated_dataset, params=best_params, epochs=10000)
+                                                                       n_generated_dataset, params=best_params, epochs=10000, gen_from_prior=gen_from_prior)
             else:
                 data_gen_control = generators_dict[generator_name].run(data_init_control, columns=fnames, 
                                                                        target_column="censor", time_to_event_column="time", 
