@@ -36,7 +36,7 @@ def run(generator_name):
     scale_C = 2.5
     scale_C_indep = 3.9
     feature_types_list = ["real", "cat"]
-    independent = True
+    independent = False
     data_types_create = True
 
     control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
@@ -50,7 +50,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_6_indep"
+    dataset_name = "Simulations_6_dep"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -210,9 +210,9 @@ def setup_unique_working_dir(base_dir="experiments"):
 
 if __name__ == "__main__":
     # generators_sel = ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    generators_sel = ["Surv-GAN"]  
+    # generators_sel = ["Surv-GAN"]  
     # generators_sel = ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"] 
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])
