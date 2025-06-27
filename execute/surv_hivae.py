@@ -320,7 +320,11 @@ def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_
     if isinstance(n_generated_sample, list):
         est_data_gen_transformed_list = []
         for n_generated_sample_ in n_generated_sample:
-            est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+            if gen_from_prior:
+                est_data_gen_transformed = generate_from_prior_HIVAE(model_hivae, data, miss_mask, true_miss_mask, 
+                                                                    feat_types_dict, n_generated_dataset, n_generated_sample_)
+            else:
+                est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
                                                         feat_types_dict, n_generated_dataset, n_generated_sample_)
             est_data_gen_transformed_list.append(est_data_gen_transformed)
 
