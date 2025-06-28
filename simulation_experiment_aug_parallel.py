@@ -312,6 +312,10 @@ def run(MC_id):
         data_gen_control_dict = {}
         for generator_name in generators_sel:
             best_params = best_params_dict[generator_name]
+            print('\n')
+            print("Generator:", generator_name)
+            print(best_params)
+            print("........ training and generation .........")
             if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
                 if generator_name in ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
                     gen_from_prior = True

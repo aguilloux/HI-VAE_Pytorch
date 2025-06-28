@@ -98,12 +98,12 @@ def run(MC_id):
     scale_C = 2.5
     scale_C_indep = 3.9
     feature_types_list = ["real", "cat"]
-    independent = True
+    independent = False
     data_types_create = True
 
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_6_indep"
+    dataset_name = "Simulations_6_dep"
     base_path = prepare_dataset_dirs(dataset_name)
     param_file = os.path.join(base_path, "params.txt")
     save_parameters(param_file, {
@@ -125,7 +125,7 @@ def run(MC_id):
     # miss_file = os.path.join(base_path, "Missing.csv")
     # true_miss_file = None
 
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]  #,"HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
