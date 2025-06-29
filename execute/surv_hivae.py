@@ -241,9 +241,16 @@ def generate_from_prior_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_t
     miss_mask = torch.multiply(miss_mask, true_miss_mask)
     if n_generated_sample is None:
         n_generated_sample = data.shape[0]
+        data_ext = data
+        miss_mask_ext = miss_mask
+    else:
+        indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
+        data_ext = data[indices]
+        miss_mask_ext = miss_mask[indices]
+
 
     with torch.no_grad():
-        data_list, miss_list = data_processing.next_batch(data, feat_types_dict, miss_mask, data.shape[0], 0)
+        data_list, miss_list = data_processing.next_batch(data_ext, feat_types_dict, miss_mask_ext, data_ext.shape[0], 0)
         data_list_observed = [data * miss_list[:, i].view(data.shape[0], 1) for i, data in enumerate(data_list)]
 
         X_list, normalization_params = utils.data_processing.batch_normalization(data_list_observed, vae_model.feat_types_list, miss_list)

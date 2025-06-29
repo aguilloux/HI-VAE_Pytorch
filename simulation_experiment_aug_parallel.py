@@ -159,7 +159,7 @@ def adjust_feat_types_for_generator(generator_name, feat_types_dict):
     feat_types_dict_ext = [dict(ft) for ft in feat_types_dict]  # deep copy
     for d in feat_types_dict_ext:
         if d['name'] == "survcens":
-            if generator_name == "HI-VAE_weibull":
+            if generator_name == "HI-VAE_weibull" or generator_name == "HI-VAE_weibull_prior":
                 d["type"] = 'surv_weibull'
             elif generator_name == "HI-VAE_lognormal":
                 d["type"] = 'surv'
