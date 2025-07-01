@@ -26,7 +26,9 @@ print('Device :', DEVICE)
 
 def run(dataset_name, generator_name):
 
-    
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(root_dir)
+
     data_file_control= "./dataset/" + dataset_name + "/data_control.csv"
     feat_types_file_control = "./dataset/" + dataset_name + "/data_types_control.csv"
     data_file_treated= "./dataset/" + dataset_name + "/data_treated.csv"
@@ -54,10 +56,7 @@ def run(dataset_name, generator_name):
     data_init_treated_encoded = torch.from_numpy(df_init_treated_encoded.values)
     data_init_treated = data_processing.discrete_variables_transformation(data_init_treated_encoded, feat_types_dict)
 
-    fnames = pd.read_csv(feat_types_file_control)["name"].to_list()[1:]
-    #fnames = types['name'][:-1].tolist()
-    fnames.append("time")#.append("censor")
-    fnames.append("censor")
+    fnames = ['time', 'censor'] + pd.read_csv(feat_types_file_control)["name"].to_list()[1:]
 
     # Format data in dataframe
     df_init_treated = pd.DataFrame(data_init_treated.numpy(), columns=fnames)
@@ -94,9 +93,8 @@ def run(dataset_name, generator_name):
         os.makedirs(original_dir + "/dataset/" + dataset_name + "/optuna_results")
 
     best_params_dict, study_dict = {}, {}
-    # for generator_name in generators_sel:
-    # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
     n_trials = 150
+    epochs = 10000
     print("{} trials for {}...".format(n_trials, generator_name))
     study_name = original_dir + "/dataset/" + dataset_name + "/optuna_results/optuna_study_{}_ntrials{}_{}_{}".format(name_config, n_trials, metric_optuna, generator_name)
     best_params_file = original_dir + "/dataset/" + dataset_name + "/optuna_results/best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name)
@@ -129,7 +127,7 @@ def run(dataset_name, generator_name):
                                                                                         n_trials=n_trials, 
                                                                                         columns=fnames,
                                                                                         generator_name=generator_name,
-                                                                                        epochs=10000,
+                                                                                        epochs=epochs,
                                                                                         metric=metric_optuna,
                                                                                         study_name=study_name, 
                                                                                         method=method_hyperopt, 
@@ -168,14 +166,7 @@ def setup_unique_working_dir(base_dir="experiments"):
   
 
 if __name__ == "__main__":
-    # generators_sel = ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    # generators_sel = ["Surv-GAN"]  
-    #generators_sel = ["HI-VAE_weibull_prior"] #, "HI-VAE_piecewise_prior"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise","HI-VAE_lognormal", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     for gen in generators_sel:
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
-    # generators_sel = ["Surv-GAN", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
         dataset_name = str(sys.argv[1])
         run(dataset_name , gen)
