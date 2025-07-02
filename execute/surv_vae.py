@@ -18,7 +18,7 @@ def set_seed(seed=1):
     torch.manual_seed(seed)                      # PyTorch (CPU)
 
 
-def generate_survae(model, n_generated_dataset, n_generated_sample, condition=None):
+def generate_survae(model, n_generated_dataset, n_generated_sample, target_column, time_to_event_column, condition=None):
     
     est_data_gen_transformed_survae = []
 
@@ -29,6 +29,7 @@ def generate_survae(model, n_generated_dataset, n_generated_sample, condition=No
     
     else:
         min_shape = 0
+        i = 0
         while min_shape < condition['n_samples']:
 
             if i > 0:
@@ -47,6 +48,7 @@ def generate_survae(model, n_generated_dataset, n_generated_sample, condition=No
             min_shape = min(shapes)
             i += 1
         est_data_gen_transformed_survae = [df[:condition['n_samples']] for df in est_data_gen_transformed_survae] 
+        est_data_gen_transformed_survae = [SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column) for df in est_data_gen_transformed_survae] 
 
     return est_data_gen_transformed_survae
 
@@ -76,23 +78,15 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
     if isinstance(n_generated_sample, list):
         est_data_gen_transformed_survae_list = []
         for n_generated_sample_ in n_generated_sample:
-            if condition is None:
-                est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample_, condition)
-            else:
-                est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample_, condition)
-                est_data_gen_transformed_survae = [SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column) for df in est_data_gen_transformed_survae] 
+            est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample_, target_column, time_to_event_column, condition)
             est_data_gen_transformed_survae_list.append(est_data_gen_transformed_survae)
 
         return est_data_gen_transformed_survae_list
     else:
         if n_generated_sample is None:
             n_generated_sample = data.shape[0]
-        if condition is None:
-            est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample, condition)
-        else:
-            est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample, condition)
-            est_data_gen_transformed_survae = [SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column) for df in est_data_gen_transformed_survae]
-
+        est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample, target_column, time_to_event_column, condition)
+    
         return est_data_gen_transformed_survae
    
 

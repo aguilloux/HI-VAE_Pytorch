@@ -89,12 +89,14 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
 
         return est_data_gen_transformed_survgan_list
     else:
-        if n_generated_sample is None:
-            n_generated_sample = data.shape[0]
-        
         if cond_gen is None:
+            if n_generated_sample is None:
+                n_generated_sample = data.shape[0]
             indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
             cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
+        else:
+            n_generated_sample = cond_gen.shape[0]
+    
         est_data_gen_transformed_survgan = []
         for j in range(n_generated_dataset):
             out = model_survgan.generate(count=n_generated_sample, cond=cond_gen)
@@ -103,11 +105,17 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
         return est_data_gen_transformed_survgan
 
 
-def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_surv_gan', metric='survival_km_distance', method='', cond_gen=None, cond_df=None):
+def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, cond_gen=None, study_name='optuna_study_surv_gan', metric='survival_km_distance', method='', cond_df=None):
     
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
     dataloader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
-    
+    if cond_gen is not None:
+        cond_generation = cond_gen.copy()
+        cond_dataloader = SurvivalAnalysisDataLoader(cond_df, target_column=target_column, time_to_event_column=time_to_event_column)
+    else:
+        cond_generation = None
+        cond_dataloader = None
+
     def objective(trial: optuna.Trial):
         set_seed()
         model = type(Plugins().get("survival_gan"))
@@ -119,9 +127,9 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         scores = []
         try:
             if method == 'train_full_gen_full':
-                if cond_gen is None:
+                if cond_generation is None:
                     cond = df[[target_column]]
-                    gen_data = run_with_timeout_mp(model, params, dataloader, df.shape[0]*n_generated_dataset, cond, n_generated_dataset, cond_gen, timeout=120)
+                    gen_data = run_with_timeout_mp(model, params, dataloader, df.shape[0]*n_generated_dataset, cond, n_generated_dataset, cond_generation, timeout=120)
                     evaluation = Metrics().evaluate(X_gt=dataloader, # can be dataloaders or dataframes
                                                 X_syn=gen_data, 
                                                 reduction='mean', # default mean
@@ -131,9 +139,8 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                                                 task_type='survival_analysis', 
                                                 use_cache=True)
                 else:
-                    cond_dataloader = SurvivalAnalysisDataLoader(cond_df, target_column=target_column, time_to_event_column=time_to_event_column)
-                    cond = df[cond_gen.columns]
-                    gen_data = run_with_timeout_mp(model, params, dataloader, df.shape[0]*n_generated_dataset, cond, n_generated_dataset, cond_gen, timeout=120)
+                    cond = df[cond_generation.columns]
+                    gen_data = run_with_timeout_mp(model, params, dataloader, cond_generation.shape[0]*n_generated_dataset, cond, n_generated_dataset, cond_generation, timeout=120)
                     evaluation = Metrics().evaluate(X_gt=cond_dataloader, # can be dataloaders or dataframes
                                                 X_syn=gen_data, 
                                                 reduction='mean', # default mean

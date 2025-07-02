@@ -489,151 +489,150 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
         model_loading = getattr(importlib.import_module("src"), model_name)
         data = torch.from_numpy(df.values)
         scores = []
-        # try:
-        if method == 'train_full_gen_full':
+        try:
+            if method == 'train_full_gen_full':
 
-            full_data_loader = SurvivalAnalysisDataLoader(df, target_column = "censor", time_to_event_column = "time")
-            # Train
-            batch_size = params["batch_size"]
-            batch_size = min(batch_size, data.shape[0])
-            model_hivae = model_loading(input_dim=data.shape[1],
-                        z_dim=params["z_dim"],
-                        y_dim=params["y_dim"],
-                        s_dim=params["s_dim"],
-                        y_dim_partition=None,
-                        feat_types_dict=feat_types_dict,
-                        intervals_surv_piecewise=intervals,
-                        n_layers_surv_piecewise=n_layers)
-            model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
-            # Generate
-            if condition is not None:
-                est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask,
-                                                                        feat_types_dict, n_generated_dataset, n_generated_sample=data.shape[0], from_prior=gen_from_prior, condition=condition)
-
-                tensor_list = list(est_data_gen_transformed)
-                full_data_tensor = torch.cat(tensor_list, dim=0)
-                df_gen_data = pd.DataFrame(full_data_tensor.numpy(), columns=columns)
-                print(df_gen_data[["time"]][df_gen_data[["time"]] <= 0.0])
-                gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column="censor", time_to_event_column="time")
-                clear_cache()
-                evaluation = Metrics().evaluate(X_gt=cond_full_data_loader, # can be dataloaders or dataframes
-                                                X_syn=gen_data, 
-                                                reduction='mean', # default mean
-                                                n_histogram_bins=10, # default 10
-                                                n_folds=1,
-                                                metrics={'stats': ['survival_km_distance']},
-                                                task_type='survival_analysis', 
-                                                use_cache=True)
-            else:
-                est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
-                                                            feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0], from_prior=gen_from_prior)
-            
-                tensor_list = list(est_data_gen_transformed)
-                full_data_tensor = torch.cat(tensor_list, dim=0)
-                df_gen_data = pd.DataFrame(full_data_tensor.numpy(), columns=columns)
-                gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column="censor", time_to_event_column="time")
-                clear_cache()
-                evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
-                                                X_syn=gen_data, 
-                                                reduction='mean', # default mean
-                                                n_histogram_bins=10, # default 10
-                                                n_folds=1,
-                                                metrics={'stats': ['survival_km_distance']},
-                                                task_type='survival_analysis', 
-                                                use_cache=True)
-            scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
-            
-        else:
-            # k-fold cross-validation
-            kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
-            for train_index, test_index in kf.split(data):
-                train_data, test_data = data[train_index], data[test_index]
-                df_test_data = df.iloc[test_index]
-                test_data_loader = SurvivalAnalysisDataLoader(df_test_data, target_column = "censor", time_to_event_column = "time")
                 full_data_loader = SurvivalAnalysisDataLoader(df, target_column = "censor", time_to_event_column = "time")
-                train_miss_mask, test_miss_mask = miss_mask[train_index], miss_mask[test_index]
-                train_true_miss_mask, test_true_miss_mask = true_miss_mask[train_index], true_miss_mask[test_index]
-                
-                if method == 'train_train_gen_full':
-                    # Train
-                    batch_size = params["batch_size"]
-                    batch_size = min(batch_size, data.shape[0])
-                    model_hivae = model_loading(input_dim=data.shape[1],
-                                z_dim=params["z_dim"],
-                                y_dim=params["y_dim"],
-                                s_dim=params["s_dim"],
-                                y_dim_partition=None,
-                                feat_types_dict=feat_types_dict,
-                                intervals_surv_piecewise=intervals,
-                                n_layers_surv_piecewise=n_layers)
-                    model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
-                    # Generate
-                    if condition is not None:
-                        est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask,
-                                                                                feat_types_dict, n_generated_dataset, n_generated_sample=data.shape[0], from_prior=gen_from_prior, condition=condition)
-                    else:
-                        est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
-                                                                    feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0], from_prior=gen_from_prior)
-                    score_k = []
-                    for j in range(n_generated_dataset):
-                        df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
-                        if metric == 'log_rank_test':
-                            score_kj = metrics.compute_logrank_test(df, df_gen_data)
-                        else: # 'survival_km_distance'
-                            gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column = "censor", time_to_event_column = "time")
-                            clear_cache()
-                            evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
-                                                            X_syn=gen_data, 
-                                                            reduction='mean', # default mean
-                                                            n_histogram_bins=10, # default 10
-                                                            n_folds=1,
-                                                            metrics={'stats': ['survival_km_distance']},
-                                                            task_type='survival_analysis', 
-                                                            use_cache=True)
-                            score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
-                        score_k.append(score_kj)
+                # Train
+                batch_size = params["batch_size"]
+                batch_size = min(batch_size, data.shape[0])
+                model_hivae = model_loading(input_dim=data.shape[1],
+                            z_dim=params["z_dim"],
+                            y_dim=params["y_dim"],
+                            s_dim=params["s_dim"],
+                            y_dim_partition=None,
+                            feat_types_dict=feat_types_dict,
+                            intervals_surv_piecewise=intervals,
+                            n_layers_surv_piecewise=n_layers)
+                model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
+                # Generate
+                if condition is not None:
+                    est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask,
+                                                                            feat_types_dict, n_generated_dataset, n_generated_sample=data.shape[0], from_prior=gen_from_prior, condition=condition)
 
+                    tensor_list = list(est_data_gen_transformed)
+                    full_data_tensor = torch.cat(tensor_list, dim=0)
+                    df_gen_data = pd.DataFrame(full_data_tensor.numpy(), columns=columns)
+                    gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column="censor", time_to_event_column="time")
+                    clear_cache()
+                    evaluation = Metrics().evaluate(X_gt=cond_full_data_loader, # can be dataloaders or dataframes
+                                                    X_syn=gen_data, 
+                                                    reduction='mean', # default mean
+                                                    n_histogram_bins=10, # default 10
+                                                    n_folds=1,
+                                                    metrics={'stats': ['survival_km_distance']},
+                                                    task_type='survival_analysis', 
+                                                    use_cache=True)
                 else:
-                    # Train
-                    batch_size = params["batch_size"]
-                    batch_size = min(batch_size, data.shape[0])
-                    model_hivae = model_loading(input_dim=data.shape[1],
-                                z_dim=params["z_dim"],
-                                y_dim=params["y_dim"],
-                                s_dim=params["s_dim"],
-                                y_dim_partition=None,
-                                feat_types_dict=feat_types_dict,
-                                intervals_surv_piecewise=intervals,
-                                n_layers_surv_piecewise=n_layers)
-                    model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
-                    # Generate
-                    est_data_gen_transformed = generate_from_HIVAE(model_hivae, test_data, test_miss_mask, test_true_miss_mask,
-                                                                    feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=test_data.shape[0], from_prior=gen_from_prior)
+                    est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+                                                                feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0], from_prior=gen_from_prior)
+                
+                    tensor_list = list(est_data_gen_transformed)
+                    full_data_tensor = torch.cat(tensor_list, dim=0)
+                    df_gen_data = pd.DataFrame(full_data_tensor.numpy(), columns=columns)
+                    gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column="censor", time_to_event_column="time")
+                    clear_cache()
+                    evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                                                    X_syn=gen_data, 
+                                                    reduction='mean', # default mean
+                                                    n_histogram_bins=10, # default 10
+                                                    n_folds=1,
+                                                    metrics={'stats': ['survival_km_distance']},
+                                                    task_type='survival_analysis', 
+                                                    use_cache=True)
+                scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+                
+            else:
+                # k-fold cross-validation
+                kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+                for train_index, test_index in kf.split(data):
+                    train_data, test_data = data[train_index], data[test_index]
+                    df_test_data = df.iloc[test_index]
+                    test_data_loader = SurvivalAnalysisDataLoader(df_test_data, target_column = "censor", time_to_event_column = "time")
+                    full_data_loader = SurvivalAnalysisDataLoader(df, target_column = "censor", time_to_event_column = "time")
+                    train_miss_mask, test_miss_mask = miss_mask[train_index], miss_mask[test_index]
+                    train_true_miss_mask, test_true_miss_mask = true_miss_mask[train_index], true_miss_mask[test_index]
+                    
+                    if method == 'train_train_gen_full':
+                        # Train
+                        batch_size = params["batch_size"]
+                        batch_size = min(batch_size, data.shape[0])
+                        model_hivae = model_loading(input_dim=data.shape[1],
+                                    z_dim=params["z_dim"],
+                                    y_dim=params["y_dim"],
+                                    s_dim=params["s_dim"],
+                                    y_dim_partition=None,
+                                    feat_types_dict=feat_types_dict,
+                                    intervals_surv_piecewise=intervals,
+                                    n_layers_surv_piecewise=n_layers)
+                        model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
+                        # Generate
+                        if condition is not None:
+                            est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask,
+                                                                                    feat_types_dict, n_generated_dataset, n_generated_sample=data.shape[0], from_prior=gen_from_prior, condition=condition)
+                        else:
+                            est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
+                                                                        feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0], from_prior=gen_from_prior)
+                        score_k = []
+                        for j in range(n_generated_dataset):
+                            df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
+                            if metric == 'log_rank_test':
+                                score_kj = metrics.compute_logrank_test(df, df_gen_data)
+                            else: # 'survival_km_distance'
+                                gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column = "censor", time_to_event_column = "time")
+                                clear_cache()
+                                evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                                                                X_syn=gen_data, 
+                                                                reduction='mean', # default mean
+                                                                n_histogram_bins=10, # default 10
+                                                                n_folds=1,
+                                                                metrics={'stats': ['survival_km_distance']},
+                                                                task_type='survival_analysis', 
+                                                                use_cache=True)
+                                score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+                            score_k.append(score_kj)
 
-                    score_k = []
-                    for j in range(n_generated_dataset):
-                        df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
-                        if metric == 'log_rank_test':
-                            score_kj = metrics.compute_logrank_test(df_test_data, df_gen_data)
-                        else: # 'survival_km_distance'
-                            gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column = "censor", time_to_event_column = "time")
-                            clear_cache()
-                            evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
-                                                            X_syn=gen_data, 
-                                                            reduction='mean', # default mean
-                                                            n_histogram_bins=10, # default 10
-                                                            n_folds=1,
-                                                            metrics={'stats': ['survival_km_distance']},
-                                                            task_type='survival_analysis', 
-                                                            use_cache=True)
-                            score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
-                        score_k.append(score_kj)
-                scores.append(np.mean(score_k))
-        print(f"Score: {np.mean(scores)}")
-        # except Exception as e:  # invalid set of params
-        #     print(f"{type(e).__name__}: {e}")
-        #     print(params)
-        #     raise optuna.TrialPruned()
+                    else:
+                        # Train
+                        batch_size = params["batch_size"]
+                        batch_size = min(batch_size, data.shape[0])
+                        model_hivae = model_loading(input_dim=data.shape[1],
+                                    z_dim=params["z_dim"],
+                                    y_dim=params["y_dim"],
+                                    s_dim=params["s_dim"],
+                                    y_dim_partition=None,
+                                    feat_types_dict=feat_types_dict,
+                                    intervals_surv_piecewise=intervals,
+                                    n_layers_surv_piecewise=n_layers)
+                        model_hivae, _, _ = train_HIVAE(model_hivae, train_data, train_miss_mask, train_true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
+                        # Generate
+                        est_data_gen_transformed = generate_from_HIVAE(model_hivae, test_data, test_miss_mask, test_true_miss_mask,
+                                                                        feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=test_data.shape[0], from_prior=gen_from_prior)
+
+                        score_k = []
+                        for j in range(n_generated_dataset):
+                            df_gen_data = pd.DataFrame(est_data_gen_transformed[j].numpy(), columns=columns)
+                            if metric == 'log_rank_test':
+                                score_kj = metrics.compute_logrank_test(df_test_data, df_gen_data)
+                            else: # 'survival_km_distance'
+                                gen_data = SurvivalAnalysisDataLoader(df_gen_data, target_column = "censor", time_to_event_column = "time")
+                                clear_cache()
+                                evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
+                                                                X_syn=gen_data, 
+                                                                reduction='mean', # default mean
+                                                                n_histogram_bins=10, # default 10
+                                                                n_folds=1,
+                                                                metrics={'stats': ['survival_km_distance']},
+                                                                task_type='survival_analysis', 
+                                                                use_cache=True)
+                                score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+                            score_k.append(score_kj)
+                    scores.append(np.mean(score_k))
+            print(f"Score: {np.mean(scores)}")
+        except Exception as e:  # invalid set of params
+            print(f"{type(e).__name__}: {e}")
+            print(params)
+            raise optuna.TrialPruned()
         return np.mean(scores)
     
 
