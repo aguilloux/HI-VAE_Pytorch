@@ -486,6 +486,7 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
             intervals = None
             n_layers = None
         print(f"trial_{trial.number}")
+        print(f"Hyperparameters: {params}")
         model_loading = getattr(importlib.import_module("src"), model_name)
         data = torch.from_numpy(df.values)
         scores = []
