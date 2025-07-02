@@ -85,15 +85,20 @@ def run(dataset_name, generators_sel):
         print("Generate data by " + generator_name)
         best_params = best_params_dict[generator_name]
         if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
-                feat_types_dict_ext = feat_types_dict.copy()
-                for i in range(len(feat_types_dict)):
-                    if feat_types_dict_ext[i]['name'] == "survcens":
-                        if generator_name in["HI-VAE_weibull", "HI-VAE_weibull_prior"]:
-                            feat_types_dict_ext[i]["type"] = 'surv_weibull'
-                        else:
-                            feat_types_dict_ext[i]["type"] = 'surv_piecewise'
+            feat_types_dict_ext = feat_types_dict.copy()
+            for i in range(len(feat_types_dict)):
+                if feat_types_dict_ext[i]['name'] == "survcens":
+                    if generator_name in["HI-VAE_weibull", "HI-VAE_weibull_prior"]:
+                        feat_types_dict_ext[i]["type"] = 'surv_weibull'
+                    else:
+                        feat_types_dict_ext[i]["type"] = 'surv_piecewise'
+            if generator_name in ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
+                gen_from_prior = True
+            else:
+                gen_from_prior = False
         if generator_name in ["HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
-            data_gen_control_dict[generator_name] = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control, true_miss_mask_control, feat_types_dict_ext, n_generated_dataset, params=best_params, epochs = 10000)
+            data_gen_control_dict[generator_name] = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control, true_miss_mask_control, feat_types_dict_ext, n_generated_dataset, params=best_params, epochs = 10000,
+                                                                                        gen_from_prior=gen_from_prior)
         else:
             data_gen_control_dict[generator_name] = generators_dict[generator_name].run(data_init_control, columns=fnames, target_column="censor", time_to_event_column="time", n_generated_dataset=n_generated_dataset, params=best_params)
 
