@@ -285,7 +285,7 @@ def run(MC_id):
 
         # GENERATE DATA FOR CONTROL GROUP
         treatment_effect = 0.0
-        control, _, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
+        control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
                                        n_features_bytype, n_active_features, p_treated, shape_T, shape_C,
                                        scale_C, scale_C_indep, data_types_create, seed=seed)
         control = control.drop(columns='treatment')
@@ -309,6 +309,7 @@ def run(MC_id):
         df_gen_control_dict ={}
         n_samples_control = df_init_control_encoded.shape[0]
         n_samples_control_aug = [int(n_samples_control * (1 + aug_perc)) for aug_perc in aug_perc_list]
+        max_n_samples_control_aug = max(n_samples_control_aug)
         data_gen_control_dict = {}
         for generator_name in generators_sel:
             best_params = best_params_dict[generator_name]
@@ -324,23 +325,27 @@ def run(MC_id):
                 feat_types_dict_ext = adjust_feat_types_for_generator(generator_name, feat_types_dict)
                 data_gen_control = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control,
                                                                     true_miss_mask_control, feat_types_dict_ext,
-                                                                    n_generated_dataset, n_generated_sample=n_samples_control_aug,
+                                                                    n_generated_dataset, n_generated_sample=max_n_samples_control_aug,
                                                                     params=best_params, epochs=epochs, gen_from_prior=gen_from_prior)
             else:
                 data_gen_control = generators_dict[generator_name].run(data_init_control, columns=fnames,
                                                                     target_column="censor",
                                                                     time_to_event_column="time",
                                                                     n_generated_dataset=n_generated_dataset,
-                                                                    n_generated_sample=n_samples_control_aug,
+                                                                    n_generated_sample=max_n_samples_control_aug,
                                                                     params=best_params)
+                
+            # data_gen_control est une liste de n_generated_dataset elements de taille max_n_samples_control_aug
             data_gen_control_dict[generator_name] = data_gen_control
 
+    
         for d in range(len(aug_perc_list)):
+            print("Number of samples in generated control group:", n_samples_control_aug[d])
             aug_perc = aug_perc_list[d]
             for generator_name in generators_sel:
                 list_df_gen_control = []
                 for i in range(n_generated_dataset):
-                    df_gen_control = pd.DataFrame(data_gen_control_dict[generator_name][d][i].numpy(), columns=fnames)
+                    df_gen_control = pd.DataFrame(data_gen_control_dict[generator_name][i][:n_samples_control_aug[d]].numpy(), columns=fnames)
                     df_gen_control["treatment"] = 0
                     list_df_gen_control.append(df_gen_control)
                 df_gen_control_dict[generator_name] = list_df_gen_control

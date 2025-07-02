@@ -98,12 +98,12 @@ def run(MC_id):
     scale_C = 2.5
     scale_C_indep = 3.9
     feature_types_list = ["real", "cat"]
-    independent = False
+    independent = True
     data_types_create = True
 
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_6_dep"
+    dataset_name = "Simulations_6_indep"
     base_path = prepare_dataset_dirs(dataset_name)
     param_file = os.path.join(base_path, "params.txt")
     save_parameters(param_file, {
@@ -322,7 +322,7 @@ def run(MC_id):
 
     MC_init = MC_id * n_MC_exp + 1
     MC_final = (MC_id + 1) * n_MC_exp
-    results.to_csv(f"{original_dir}/dataset/{dataset_name}/results_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
+    results.to_csv(f"{original_dir}/dataset/{dataset_name}/results_complete_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
    
 
 if __name__ == "__main__":

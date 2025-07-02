@@ -15,19 +15,22 @@ import torch
 import multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
-def run_worker(return_dict, model, params, data, count, cond, n_generated_dataset):
+def run_worker(return_dict, model, params, data, count, cond, n_generated_dataset, cond_gen):
     # print("training....")
     model_trial = model(**params)
     model_trial.fit(data, cond=cond)
     # print("generation....")
-    cond_repeat = pd.concat([cond for i in range(n_generated_dataset)])                
-    result = model_trial.generate(count=count, cond=cond_repeat)
+    if cond_gen is None:
+        cond_gen = pd.concat([cond for i in range(n_generated_dataset)]) 
+    else:
+        cond_gen = pd.concat([cond_gen for i in range(n_generated_dataset)])                
+    result = model_trial.generate(count=count, cond=cond_gen)
     return_dict["result"] = result
 
-def run_with_timeout_mp(model, params, data, count, cond, n_generated_dataset, timeout=60):
+def run_with_timeout_mp(model, params, data, count, cond, n_generated_dataset, cond_gen, timeout=60):
     manager = mp.Manager()
     return_dict = manager.dict()
-    p = mp.Process(target=run_worker, args=(return_dict, model, params, data, count, cond, n_generated_dataset))
+    p = mp.Process(target=run_worker, args=(return_dict, model, params, data, count, cond, n_generated_dataset, cond_gen))
     p.start()
     p.join(timeout)
 
@@ -45,7 +48,7 @@ def set_seed(seed=1):
     np.random.seed(seed)                         # NumPy
     torch.manual_seed(seed)                      # PyTorch (CPU)
 
-def run(data, columns, target_column, time_to_event_column, n_generated_dataset, n_generated_sample=None, params=None):
+def run(data, columns, target_column, time_to_event_column, n_generated_dataset, n_generated_sample=None, params=None, cond_gen=None):
     """
     Use a conditional GAN for survival data generation
     """
@@ -64,15 +67,19 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
         print(model_survgan.__dict__)
 
     # Train
-    cond = df[[target_column]]
+    if cond_gen is not None:
+        cond = df[cond_gen.columns]
+    else:
+        cond = df[[target_column]]
     model_survgan.fit(data, cond=cond)
     
     # Generate
     if isinstance(n_generated_sample, list):
         est_data_gen_transformed_survgan_list = []
         for n_generated_sample_ in n_generated_sample:
-            indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample_ - data.shape[0],))))
-            cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
+            if cond_gen is None:
+                indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample_ - data.shape[0],))))
+                cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
             est_data_gen_transformed_survgan = []
             for j in range(n_generated_dataset):
                 out = model_survgan.generate(count=n_generated_sample_, cond=cond_gen)
@@ -84,10 +91,10 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
     else:
         if n_generated_sample is None:
             n_generated_sample = data.shape[0]
-        #     cond_gen = df[[target_column]]
-        # else:
-        indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
-        cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
+        
+        if cond_gen is None:
+            indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_generated_sample - data.shape[0],))))
+            cond_gen = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
         est_data_gen_transformed_survgan = []
         for j in range(n_generated_dataset):
             out = model_survgan.generate(count=n_generated_sample, cond=cond_gen)
@@ -96,11 +103,11 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
         return est_data_gen_transformed_survgan
 
 
-def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_surv_gan', metric='survival_km_distance', method=''):
+def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_surv_gan', metric='survival_km_distance', method='', cond_gen=None, cond_df=None):
     
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
     dataloader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
-
+    
     def objective(trial: optuna.Trial):
         set_seed()
         model = type(Plugins().get("survival_gan"))
@@ -112,19 +119,10 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         scores = []
         try:
             if method == 'train_full_gen_full':
-                
-                # cond = df[[target_column]]
-                # model_trial = model(**params)
-                # model_trial.fit(dataloader, cond=cond)
-
-                # cond_repeat = pd.concat([cond for i in range(n_generated_dataset)])
-                # gen_data = model_trial.generate(count=df.shape[0]*n_generated_dataset, cond=cond_repeat)
-                # # assert not gen_data.dataframe().isna().any().any(), "Le DataFrame contient des valeurs NaN"
-                # clear_cache()
-                
-                gen_data = run_with_timeout_mp(model, params, dataloader, df.shape[0]*n_generated_dataset, df[[target_column]], n_generated_dataset, timeout=120)
-
-                evaluation = Metrics().evaluate(X_gt=dataloader, # can be dataloaders or dataframes
+                if cond_gen is None:
+                    cond = df[[target_column]]
+                    gen_data = run_with_timeout_mp(model, params, dataloader, df.shape[0]*n_generated_dataset, cond, n_generated_dataset, cond_gen, timeout=120)
+                    evaluation = Metrics().evaluate(X_gt=dataloader, # can be dataloaders or dataframes
                                                 X_syn=gen_data, 
                                                 reduction='mean', # default mean
                                                 n_histogram_bins=10, # default 10
@@ -132,29 +130,21 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                                                 metrics={'stats': ['survival_km_distance']},
                                                 task_type='survival_analysis', 
                                                 use_cache=True)
+                else:
+                    cond_dataloader = SurvivalAnalysisDataLoader(cond_df, target_column=target_column, time_to_event_column=time_to_event_column)
+                    cond = df[cond_gen.columns]
+                    gen_data = run_with_timeout_mp(model, params, dataloader, df.shape[0]*n_generated_dataset, cond, n_generated_dataset, cond_gen, timeout=120)
+                    evaluation = Metrics().evaluate(X_gt=cond_dataloader, # can be dataloaders or dataframes
+                                                X_syn=gen_data, 
+                                                reduction='mean', # default mean
+                                                n_histogram_bins=10, # default 10
+                                                n_folds=1,
+                                                metrics={'stats': ['survival_km_distance']},
+                                                task_type='survival_analysis', 
+                                                use_cache=True)
+            
                 scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
 
-                # full_data_loader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
-                # for j in range(n_generated_dataset):
-                #     # generate as many data as in the all dataset
-                #     print("generation....")
-                #     gen_data = model_trial.generate(count=df.shape[0], cond=cond)
-                #     if metric == 'log_rank_test':
-                #         df_gen_data = gen_data.dataframe()
-                #         score_j = metrics.compute_logrank_test(df, df_gen_data)
-                #     else: # 'survival_km_distance'
-                #         clear_cache()
-                #         print("evaluation....")
-                #         evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
-                #                                         X_syn=gen_data, 
-                #                                         reduction='mean', # default mean
-                #                                         n_histogram_bins=10, # default 10
-                #                                         n_folds=1,
-                #                                         metrics={'stats': ['survival_km_distance']},
-                #                                         task_type='survival_analysis', 
-                #                                         use_cache=True)
-                #         score_j = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
-                #     scores.append(score_j)
             else:
             # k-fold cross-validation 
                 kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)

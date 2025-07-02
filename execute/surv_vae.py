@@ -17,7 +17,42 @@ def set_seed(seed=1):
     np.random.seed(seed)                         # NumPy
     torch.manual_seed(seed)                      # PyTorch (CPU)
 
-def run(data, columns, target_column, time_to_event_column, n_generated_dataset, n_generated_sample=None, params=None):
+
+def generate_survae(model, n_generated_dataset, n_generated_sample, condition=None):
+    
+    est_data_gen_transformed_survae = []
+
+    if condition is None:
+        for j in range(n_generated_dataset):
+            out = model.generate(count=n_generated_sample)
+            est_data_gen_transformed_survae.append(out)
+    
+    else:
+        min_shape = 0
+        while min_shape < condition['n_samples']:
+
+            if i > 0:
+                est_data_gen_transformed_survae = [df[:min_shape] for df in est_data_gen_transformed_survae]
+
+            for j in range(n_generated_dataset):
+                out = model.generate(count=n_generated_sample)
+                out_df = out.dataframe()
+                out_df = out_df[out_df[condition['var']] == condition['value']]
+                if i == 0:
+                    est_data_gen_transformed_survae.append(out_df)
+                else:   
+                    est_data_gen_transformed_survae[j] = pd.concat([est_data_gen_transformed_survae[j], out_df], ignore_index=True)
+
+            shapes = [len(t) for t in est_data_gen_transformed_survae]
+            min_shape = min(shapes)
+            i += 1
+        est_data_gen_transformed_survae = [df[:condition['n_samples']] for df in est_data_gen_transformed_survae] 
+
+    return est_data_gen_transformed_survae
+
+
+def run(data, columns, target_column, time_to_event_column, n_generated_dataset, n_generated_sample=None, params=None, condition=None):
+    # condition={'var': "treatment", 'value': 0.0, 'n_samples': 300}
     """
     Use a VAE for tabular data generation
     """
@@ -41,28 +76,31 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
     if isinstance(n_generated_sample, list):
         est_data_gen_transformed_survae_list = []
         for n_generated_sample_ in n_generated_sample:
-            est_data_gen_transformed_survae = []
-            for j in range(n_generated_dataset):
-                out = model_survae.generate(count=n_generated_sample_)
-                est_data_gen_transformed_survae.append(out)
+            if condition is None:
+                est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample_, condition)
+            else:
+                est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample_, condition)
+                est_data_gen_transformed_survae = [SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column) for df in est_data_gen_transformed_survae] 
             est_data_gen_transformed_survae_list.append(est_data_gen_transformed_survae)
 
         return est_data_gen_transformed_survae_list
     else:
         if n_generated_sample is None:
             n_generated_sample = data.shape[0]
-        est_data_gen_transformed_survae = []
-        for j in range(n_generated_dataset):
-            out = model_survae.generate(count=n_generated_sample)
-            est_data_gen_transformed_survae.append(out)
+        if condition is None:
+            est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample, condition)
+        else:
+            est_data_gen_transformed_survae = generate_survae(model_survae, n_generated_dataset, n_generated_sample, condition)
+            est_data_gen_transformed_survae = [SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column) for df in est_data_gen_transformed_survae]
 
         return est_data_gen_transformed_survae
+   
 
-
-
-def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_survae', metric='survival_km_distance', method=''):
+def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, study_name='optuna_study_survae', metric='survival_km_distance', method='', condition=None, cond_df=None):
     
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
+    if condition is not None and cond_df is not None:
+        cond_full_data_loader =  SurvivalAnalysisDataLoader(cond_df, target_column = "censor", time_to_event_column = "time")
  
     def objective(trial: optuna.Trial):
         set_seed()
@@ -81,37 +119,46 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 model_survae_trial = model_survae(**params)
                 # train on full data
                 model_survae_trial.fit(full_data_loader)
+            
+                if condition is None:
+                    gen_data = model_survae_trial.generate(count=df.shape[0]*n_generated_dataset)
+                    clear_cache()
+                    evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                                                    X_syn=gen_data, 
+                                                    reduction='mean', # default mean
+                                                    n_histogram_bins=10, # default 10
+                                                    n_folds=1,
+                                                    metrics={'stats': ['survival_km_distance']},
+                                                    task_type='survival_analysis', 
+                                                    use_cache=True)
+                else:
+                    est_data_gen_transformed_survae = []
+                    gen_shape = 0
+                    i = 0
+                    while gen_shape < condition['n_samples']*n_generated_dataset:
+                        out = model_survae_trial.generate(count=df.shape[0]*n_generated_dataset)
+                        out_df = out.dataframe()
+                        out_df = out_df[out_df[condition['var']] == condition['value']]
+                        if i == 0:
+                            est_data_gen_transformed_survae.append(out_df)
+                        else:   
+                            est_data_gen_transformed_survae[0] = pd.concat([est_data_gen_transformed_survae[0], out_df], ignore_index=True)
+                        gen_shape = len(est_data_gen_transformed_survae[0])
+                        i += 1
 
-                gen_data = model_survae_trial.generate(count=df.shape[0]*n_generated_dataset)
-                clear_cache()
-                evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
-                                                X_syn=gen_data, 
-                                                reduction='mean', # default mean
-                                                n_histogram_bins=10, # default 10
-                                                n_folds=1,
-                                                metrics={'stats': ['survival_km_distance']},
-                                                task_type='survival_analysis', 
-                                                use_cache=True)
+                    gen_data = SurvivalAnalysisDataLoader(est_data_gen_transformed_survae[0][:condition['n_samples']*n_generated_dataset], target_column=target_column, time_to_event_column=time_to_event_column)
+                    clear_cache()
+                    evaluation = Metrics().evaluate(X_gt=cond_full_data_loader, # can be dataloaders or dataframes
+                                                    X_syn=gen_data, 
+                                                    reduction='mean', # default mean
+                                                    n_histogram_bins=10, # default 10
+                                                    n_folds=1,
+                                                    metrics={'stats': ['survival_km_distance']},
+                                                    task_type='survival_analysis', 
+                                                    use_cache=True)
+
                 scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
 
-                # for j in range(n_generated_dataset):
-                #     # generate as many data as in the all dataset
-                #     gen_data = model_survae_trial.generate(count=df.shape[0])
-                #     if metric == 'log_rank_test':
-                #         df_gen_data = gen_data.dataframe()
-                #         score_j = metrics.compute_logrank_test(df, df_gen_data)
-                #     else: # 'survival_km_distance'
-                #         clear_cache()
-                #         evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
-                #                                         X_syn=gen_data, 
-                #                                         reduction='mean', # default mean
-                #                                         n_histogram_bins=10, # default 10
-                #                                         n_folds=1,
-                #                                         metrics={'stats': ['survival_km_distance']},
-                #                                         task_type='survival_analysis', 
-                #                                         use_cache=True)
-                #         score_j = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
-                #     scores.append(score_j)
             else:
                 # k-fold cross-validation
                 kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
