@@ -17,4 +17,4 @@ source /home/$USER/.bashrc
 source activate .venv_HI_VAE_ext
 
 # Run your Python script
-python3 realdataset_compare_parallel_full.py "Aids"
+python3 real_dataset_compare.py "Aids"
