@@ -48,7 +48,6 @@ def run(generator_name):
     df_top = types.iloc[:(len(types)-1)]       
     df_bottom = types.iloc[(len(types)-1):]    # (survcens)
     types = pd.concat([df_top, pd.DataFrame([new_row]), df_bottom], ignore_index=True)
-    types
 
     all = pd.concat([control, treated], axis=0, ignore_index=True)
     all['treatment'] = all['treatment'].astype(np.float32)

@@ -23,8 +23,3 @@ GENERATOR_ID=${SLURM_ARRAY_TASK_ID}
 
 python3 simulation_hyperopt_trainfull_parallel.py $GENERATOR_ID 
 # python3 simulation_hyperopt_parallel.py $GENERATOR_ID 
-
-
-# SBATCH --gres=gpu:a100:1
-# SBATCH --partition=gpu
-# SBATCH --partition=cpu_homogen
