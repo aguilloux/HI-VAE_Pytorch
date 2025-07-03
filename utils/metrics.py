@@ -220,6 +220,7 @@ def general_metrics(data_init, data_gen, generator):
                                                  'privacy': ['k-map']
                                                 }, # compute only selected metrics
                                         task_type='survival_analysis', 
+                                        n_folds=1,
                                         use_cache=True)
         selected_metrics = evaluation.T[["stats.jensenshannon_dist.marginal",
                                           "stats.ks_test.marginal", 
