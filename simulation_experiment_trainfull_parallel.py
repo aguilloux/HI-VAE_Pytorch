@@ -286,7 +286,7 @@ def run(MC_id):
             _, treated, _ = simulation(treatment_effect, n_samples, independent, feature_types_list,
                                        n_features_bytype, n_active_features, p_treated, shape_T,
                                        shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
-            treated = treated.drop(columns='treatment')
+            # treated = treated.drop(columns='treatment')
 
             data_file_treated = os.path.join(f"{original_dir}/dataset/{dataset_name_MC}", "data_treated.csv")
             feat_types_file_treated = os.path.join(f"{original_dir}/dataset/{dataset_name_MC}", "data_types_treated.csv")
