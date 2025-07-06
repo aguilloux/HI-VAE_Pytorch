@@ -91,7 +91,7 @@ def run(MC_id):
     n_samples = 600
     n_features_bytype = 6
     n_active_features = 3 
-    treatment_effect = 0.2
+    treatment_effect = 0.4
     p_treated = 0.5
     shape_T = 2.
     shape_C = 2.
@@ -103,7 +103,7 @@ def run(MC_id):
 
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_6_indep_train_full02"
+    dataset_name = "Simulations_6_indep_train_full04"
     base_path = prepare_dataset_dirs(dataset_name)
     param_file = os.path.join(base_path, "params.txt")
     save_parameters(param_file, {
@@ -189,7 +189,7 @@ def run(MC_id):
         seed += 1
 
         # Simulate control group data
-        treatment_effect = 0.2
+        treatment_effect = 0.4
         control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
                                        n_features_bytype, n_active_features, p_treated, shape_T,
                                        shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)

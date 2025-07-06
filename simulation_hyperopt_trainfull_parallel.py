@@ -29,7 +29,7 @@ def run(generator_name):
     n_samples = 600
     n_features_bytype = 6
     n_active_features = 3 
-    treatment_effect = 0.2 # 0.0
+    treatment_effect = 0.4 # 0.0
     p_treated = 0.5
     shape_T = 2.
     shape_C = 2.
@@ -59,7 +59,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_6_indep_train_full02"
+    dataset_name = "Simulations_6_indep_train_full04"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
