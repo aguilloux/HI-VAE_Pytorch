@@ -335,7 +335,7 @@ def run(MC_id):
                                                                     n_generated_sample=max_n_samples_control_aug,
                                                                     params=best_params)
                 
-            # data_gen_control est une liste de n_generated_dataset elements de taille max_n_samples_control_aug
+            # data_gen_control if a list of n_generated_dataset elements of shape max_n_samples_control_aug
             data_gen_control_dict[generator_name] = data_gen_control
 
     
@@ -345,7 +345,7 @@ def run(MC_id):
             for generator_name in generators_sel:
                 list_df_gen_control = []
                 for i in range(n_generated_dataset):
-                    df_gen_control = pd.DataFrame(data_gen_control_dict[generator_name][i][:n_samples_control_aug[d]].numpy(), columns=fnames)
+                    df_gen_control = pd.DataFrame(data_gen_control_dict[generator_name][i].numpy()[:n_samples_control_aug[d]], columns=fnames)
                     df_gen_control["treatment"] = 0
                     list_df_gen_control.append(df_gen_control)
                 df_gen_control_dict[generator_name] = list_df_gen_control
@@ -357,6 +357,9 @@ def run(MC_id):
             # Compare the performance of generation in term of p-values between generated control group and intial treated group with different treatment effects
             for t in np.arange(len(treat_effects)):
                 treatment_effect = treat_effects[t]
+                n_samples = int(300 * (1 + aug_perc) + 300) # Number of samples in total 
+                p_treated = (n_samples - 300) / n_samples
+
                 coef_init_univ = true_univ_coef(treatment_effect, independent, feature_types_list,
                                                     n_features_bytype, n_active_features, p_treated, shape_T,
                                                     shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
@@ -390,7 +393,8 @@ def run(MC_id):
                 H0_coef += [treatment_effect] * n_generated_dataset
                 aug_percs += [aug_perc] * n_generated_dataset
                 simu_num += [(m + n_MC_exp * MC_id) * len(treat_effects) * len(aug_perc_list) + d * len(treat_effects) + t] * n_generated_dataset
-                D_control += [control['censor'].sum()] * n_generated_dataset
+                D_control += [control['censor'].sum() * (1 + aug_perc)] * n_generated_dataset
+                # D_treated += [treated['censor'].sum()] * n_generated_dataset
                 D_treated += [treated['censor'].sum()] * n_generated_dataset
                 coef_init_univ_list += [coef_init_univ] * n_generated_dataset
 
