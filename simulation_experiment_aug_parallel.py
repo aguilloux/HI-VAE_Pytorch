@@ -182,7 +182,7 @@ def run(MC_id):
     n_samples = 600
     n_features_bytype = 6
     n_active_features = 3 
-    treatment_effect = 0.
+    treatment_effect = 0.0
     p_treated = 0.5
     shape_T = 2.
     shape_C = 2.
@@ -192,8 +192,8 @@ def run(MC_id):
     independent = True
     data_types_create = True
 
-    dataset_name = "Simulations_6_indep"
-    dataset_name_hyperopt = "Simulations_6_indep"
+    dataset_name = "Simulations_6_indep_aug"
+    dataset_name_hyperopt = "Simulations_6_indep_aug"
     base_path = prepare_dataset_dirs(dataset_name)
     param_file = os.path.join(base_path, "params.txt")
     save_parameters(param_file, {

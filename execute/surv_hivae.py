@@ -22,7 +22,7 @@ def set_seed(seed=1):
     np.random.seed(seed)                         # NumPy
     torch.manual_seed(seed)                      # PyTorch (CPU)
 
-def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose = True):
+def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose = True, diff_privacy=False):
 
     # Train-test split on control
     train_test_share = .9
@@ -62,6 +62,12 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
 
     # Training
     optimizer = optim.Adam(vae_model.parameters(), lr=lr)
+
+    # if diff_privacy:
+    #     from opacus import PrivacyEngine
+    #     privacy_engine = PrivacyEngine()
+    #     vae_model, optimizer = 
+
     start_time = time.time()
     loss_train, error_observed_train, error_missing_train = [], [], []
     loss_val, error_observed_val, error_missing_val = [], [], []
