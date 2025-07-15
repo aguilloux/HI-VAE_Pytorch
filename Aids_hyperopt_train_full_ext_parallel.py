@@ -43,14 +43,14 @@ def run(generator_name, dataset_name):
     data_init_control_encoded = torch.from_numpy(df_init_control_encoded.values)
     data_init_control = data_processing.discrete_variables_transformation(data_init_control_encoded, feat_types_dict)
     df_init_control = pd.DataFrame(data_init_control.numpy(), columns=fnames)
-    df_init_control['treatment'] = 0
+    df_init_control['treatment'] = 0.0
     
     # Load and transform treated data
     df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, feat_types_file_treated, miss_file, true_miss_file)
     data_init_treated_encoded = torch.from_numpy(df_init_treated_encoded.values)
     data_init_treated = data_processing.discrete_variables_transformation(data_init_treated_encoded, feat_types_dict)
     df_init_treated = pd.DataFrame(data_init_treated.numpy(), columns=fnames)
-    df_init_treated['treatment'] = 1
+    df_init_treated['treatment'] = 1.0
 
     # Add treatment column
     new_row = {'name': 'treatment', 'type': 'cat', 'dim': 1, 'nclass': 2}
@@ -58,7 +58,8 @@ def run(generator_name, dataset_name):
     types = pd.concat([df_types, pd.DataFrame([new_row])], ignore_index=True)
     types['nclass'] = types['nclass'].astype('Int64')
 
-    all = pd.concat([df_init_control, df_init_treated], axis=0, ignore_index=True)
+    df_init_full = pd.concat([df_init_control, df_init_treated], axis=0, ignore_index=True)
+    df_init_full['treatment'] = df_init_full['treatment'].astype(np.float32)
 
     if not os.path.exists("./dataset"):
         os.makedirs("./dataset/")
@@ -67,57 +68,42 @@ def run(generator_name, dataset_name):
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
     
-    data_file_control= "./dataset/" + dataset_name + "/data_control_ext.csv"
-    feat_types_file_control = "./dataset/" + dataset_name + "/data_types_control_ext.csv"
-    data_file_treated= "./dataset/" + dataset_name + "/data_treated_ext.csv"
-    feat_types_file_treated= "./dataset/" + dataset_name + "/data_types_treated_ext.csv"
-    data_file_full = "./dataset/" + dataset_name + "/data_full_ext.csv"
-    feat_types_file_full = "./dataset/" + dataset_name + "/data_types_full_ext.csv"
+    data_file_control_ext = "./dataset/" + dataset_name + "/data_control_ext.csv"
+    feat_types_file_control_ext = "./dataset/" + dataset_name + "/data_types_control_ext.csv"
+    data_file_treated_ext = "./dataset/" + dataset_name + "/data_treated_ext.csv"
+    feat_types_file_treated_ext = "./dataset/" + dataset_name + "/data_types_treated_ext.csv"
+    data_file_full_ext = "./dataset/" + dataset_name + "/data_full_ext.csv"
+    feat_types_file_full_ext = "./dataset/" + dataset_name + "/data_types_full_ext.csv"
 
     # If the dataset has no missing data, leave the "miss_file" variable empty
     miss_file = "dataset/" + dataset_name + "/Missing.csv"
     true_miss_file = None
 
-    df_init_control.to_csv(data_file_control, index=False, header=False)
-    types.to_csv(feat_types_file_control)
-    df_init_treated.to_csv(data_file_treated, index=False, header=False)
-    types.to_csv(feat_types_file_treated)
-    all.to_csv(data_file_full, index=False, header=False)
-    types.to_csv(feat_types_file_full)
+    df_init_control.to_csv(data_file_control_ext, index=False, header=False)
+    types.to_csv(feat_types_file_control_ext)
+    df_init_treated.to_csv(data_file_treated_ext, index=False, header=False)
+    types.to_csv(feat_types_file_treated_ext)
+    df_init_full.to_csv(data_file_full_ext, index=False, header=False)
+    types.to_csv(feat_types_file_full_ext)
 
+    fnames = ['time', 'censor'] + pd.read_csv(feat_types_file_control_ext)["name"].to_list()[1:]
+    # Load and transform full data
+    df_init_control_encoded_ext, feat_types_dict_control_ext, _, _, _ = data_processing.read_data(data_file_control_ext, 
+                                                                        feat_types_file_control_ext, 
+                                                                        miss_file, true_miss_file)
+    data_init_control_encoded_ext = torch.from_numpy(df_init_control_encoded_ext.values)
+    data_init_control_ext = data_processing.discrete_variables_transformation(data_init_control_encoded_ext, feat_types_dict_control_ext)
 
-    # Load and transform control data
-    df_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control,
-                                                                                                                feat_types_file_control,
-                                                                                                                miss_file, true_miss_file)
-    data_init_control_encoded = torch.from_numpy(df_init_control_encoded.values)
-    data_init_control = data_processing.discrete_variables_transformation(data_init_control_encoded, feat_types_dict)
-
-    # Load and transform treated data
-    df_init_treated_encoded, _, _, _, _ = data_processing.read_data(data_file_treated, 
-                                                                    feat_types_file_treated, 
-                                                                    miss_file, true_miss_file)
-    data_init_treated_encoded = torch.from_numpy(df_init_treated_encoded.values)
-    data_init_treated = data_processing.discrete_variables_transformation(data_init_treated_encoded, feat_types_dict)
+    df_init_control_ext = pd.DataFrame(data_init_control_ext.numpy(), columns=fnames)
+    df_init_control_ext["treatment"] = 0.0
 
     # Load and transform full data
-    df_init_full_encoded, feat_types_dict_full, miss_mask_full, true_miss_mask_full, _ = data_processing.read_data(data_file_full, 
-                                                                                                                   feat_types_file_full, 
+    df_init_full_encoded_ext, feat_types_dict_full_ext, miss_mask_full, true_miss_mask_full, _ = data_processing.read_data(data_file_full_ext, 
+                                                                                                                   feat_types_file_full_ext, 
                                                                                                                    miss_file, true_miss_file)
-    data_init_full_encoded = torch.from_numpy(df_init_full_encoded.values)
-    data_init_full = data_processing.discrete_variables_transformation(data_init_full_encoded, feat_types_dict_full)
 
-    fnames = ['time', 'censor'] + pd.read_csv(feat_types_file_control)["name"].to_list()[1:]
-
-    # Format data in dataframe
-    df_init_treated = pd.DataFrame(data_init_treated.numpy(), columns=fnames)
-    df_init_control = pd.DataFrame(data_init_control.numpy(), columns=fnames)
-
-    # Update the data
-    df_init_treated["treatment"] = 1.0
-    df_init_control["treatment"] = 0.0
-    df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
-    df_init_full = pd.DataFrame(data_init_full.numpy(), columns=fnames)
+    data_init_full_encoded_ext = torch.from_numpy(df_init_full_encoded_ext.values)
+    data_init_full_ext = data_processing.discrete_variables_transformation(data_init_full_encoded_ext, feat_types_dict_full_ext)
 
     # Parameters of the optuna study
     metric_optuna = "survival_km_distance" # metric to optimize in optuna
@@ -158,24 +144,24 @@ def run(generator_name, dataset_name):
         print("Creating new optuna study for {}...".format(generator_name))
 
     if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
-        feat_types_dict_ext = feat_types_dict_full.copy()
-        for i in range(len(feat_types_dict)):
-            if feat_types_dict_ext[i]['name'] == "survcens":
+        feat_types_dict_full_ext = feat_types_dict_full_ext.copy()
+        for i in range(len(feat_types_dict_full_ext)):
+            if feat_types_dict_full_ext[i]['name'] == "survcens":
                 if generator_name in ["HI-VAE_weibull", "HI-VAE_weibull_prior"]:
-                    feat_types_dict_ext[i]["type"] = 'surv_weibull'
+                    feat_types_dict_full_ext[i]["type"] = 'surv_weibull'
                 elif generator_name in ["HI-VAE_lognormal"]:
-                    feat_types_dict_ext[i]["type"] = 'surv'
+                    feat_types_dict_full_ext[i]["type"] = 'surv'
                 else:
-                    feat_types_dict_ext[i]["type"] = 'surv_piecewise'
+                    feat_types_dict_full_ext[i]["type"] = 'surv_piecewise'
         if generator_name in ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
             gen_from_prior = True
         else:
             gen_from_prior = False
-        condition = {'var': 'treatment_0', 'value': 1.0, 'n_samples': df_init_control.shape[0]}  # Condition on the control group
-        best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(df_init_full_encoded,
+        condition = {'var': 'treatment', 'value': 0.0, 'n_samples': df_init_control_encoded_ext.shape[0]}  # Condition on the control group
+        best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(df_init_full_encoded_ext,
                                                                                         miss_mask_full, 
                                                                                         true_miss_mask_full,
-                                                                                        feat_types_dict_ext, 
+                                                                                        feat_types_dict_full_ext, 
                                                                                         n_generated_dataset, 
                                                                                         n_splits=n_splits,
                                                                                         n_trials=n_trials, 
@@ -187,14 +173,14 @@ def run(generator_name, dataset_name):
                                                                                         method=method_hyperopt, 
                                                                                         gen_from_prior=gen_from_prior, 
                                                                                         condition=condition, 
-                                                                                        cond_df=df_init_control_encoded)
+                                                                                        cond_df=df_init_control_encoded_ext)
         best_params_dict[generator_name] = best_params
         study_dict[generator_name] = study
         with open(best_params_file, "w") as f:
             json.dump(best_params, f)
     elif generator_name == "Surv-VAE": 
-        condition = {'var': 'treatment', 'value': 0.0, 'n_samples': df_init_control.shape[0]}
-        best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_full, 
+        condition = {'var': 'treatment', 'value': 0.0, 'n_samples': df_init_control_encoded_ext.shape[0]}
+        best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_full_ext, 
                                                                                         columns=fnames, 
                                                                                         target_column="censor", 
                                                                                         time_to_event_column="time", 
@@ -205,13 +191,13 @@ def run(generator_name, dataset_name):
                                                                                         study_name=study_name, 
                                                                                         method=method_hyperopt, 
                                                                                         condition=condition,
-                                                                                        cond_df=df_init_control)
+                                                                                        cond_df=df_init_control_ext)
         best_params_dict[generator_name] = best_params
         study_dict[generator_name] = study
         with open(best_params_file, "w") as f:
             json.dump(best_params, f)
     else: 
-        best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_full, 
+        best_params, study = generators_dict[generator_name].optuna_hyperparameter_search(data_init_full_ext, 
                                                                                         columns=fnames, 
                                                                                         target_column="censor", 
                                                                                         time_to_event_column="time", 
@@ -221,8 +207,8 @@ def run(generator_name, dataset_name):
                                                                                         metric=metric_optuna,
                                                                                         study_name=study_name, 
                                                                                         method=method_hyperopt, 
-                                                                                        cond_gen=df_init_control[["censor", "treatment"]],
-                                                                                        cond_df=df_init_control)
+                                                                                        cond_gen=df_init_control_ext[["censor", "treatment"]],
+                                                                                        cond_df=df_init_control_ext)
         best_params_dict[generator_name] = best_params
         study_dict[generator_name] = study
         with open(best_params_file, "w") as f:
