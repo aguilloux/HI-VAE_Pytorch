@@ -23,7 +23,7 @@ def run_worker(return_dict, model, params, data, count, cond, n_generated_datase
     if cond_gen is None:
         cond_gen = pd.concat([cond for i in range(n_generated_dataset)]) 
     else:
-        cond_gen = pd.concat([cond_gen for i in range(n_generated_dataset)])                
+        cond_gen = pd.concat([cond_gen for i in range(n_generated_dataset)])    
     result = model_trial.generate(count=count, cond=cond_gen)
     return_dict["result"] = result
 
@@ -130,9 +130,10 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 if cond_generation is None:
                     n_gen_sample = n_generated_sample if n_generated_sample is not None else data.shape[0]
                     indices = torch.cat((torch.arange(0, data.shape[0]), torch.randint(0, data.shape[0], (n_gen_sample - data.shape[0],))))
-                    cond = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
-                    # cond = df[[target_column]]
-                    gen_data = run_with_timeout_mp(model, params, dataloader, n_gen_sample*n_generated_dataset, cond, n_generated_dataset, cond_generation, timeout=120)
+                    # cond = SurvivalAnalysisDataLoader(df.loc[indices], target_column=target_column, time_to_event_column=time_to_event_column)[[target_column]]
+                    cond_gen = df.loc[indices][[target_column]]
+                    cond = df[[target_column]]
+                    gen_data = run_with_timeout_mp(model, params, dataloader, n_gen_sample*n_generated_dataset, cond, n_generated_dataset, cond_gen, timeout=120)
                     evaluation = Metrics().evaluate(X_gt=dataloader, # can be dataloaders or dataframes
                                                 X_syn=gen_data, 
                                                 reduction='mean', # default mean
