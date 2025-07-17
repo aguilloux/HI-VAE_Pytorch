@@ -115,9 +115,8 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                 model_survae_trial.fit(full_data_loader)
             
                 if condition is None:
-                    if n_generated_sample is None:
-                        n_generated_sample = df.shape[0]
-                    gen_data = model_survae_trial.generate(count=n_generated_sample*n_generated_dataset)
+                    n_gen_sample = n_generated_sample if n_generated_sample is not None else data.shape[0]
+                    gen_data = model_survae_trial.generate(count=n_gen_sample*n_generated_dataset)
                     clear_cache()
                     evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
                                                     X_syn=gen_data, 

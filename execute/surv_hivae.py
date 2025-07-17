@@ -485,7 +485,7 @@ def get_batchsize(n_samples, n_splits):
 
     return batch_size
 
-def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, n_generated_sample=None, study_name='optuna_study_surv_hivae', metric='survival_km_distance', method='', gen_from_prior=False, condition=None, cond_df=None):
+def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, n_generated_sample = None, study_name='optuna_study_surv_hivae', metric='survival_km_distance', method='', gen_from_prior=False, condition=None, cond_df=None):
    
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
     miss_mask = miss_mask
@@ -514,7 +514,7 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
                 full_data_loader = SurvivalAnalysisDataLoader(df, target_column = "censor", time_to_event_column = "time")
                 # Train
                 batch_size = params["batch_size"]
-                batch_size = min(batch_size, data.shape[0])
+                batch_size = min(batch_size, int(0.9*data.shape[0]))
                 model_hivae = model_loading(input_dim=data.shape[1],
                             z_dim=params["z_dim"],
                             y_dim=params["y_dim"],
@@ -543,10 +543,9 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
                                                     task_type='survival_analysis', 
                                                     use_cache=True)
                 else:
-                    if n_generated_sample is None:
-                        n_generated_sample = data.shape[0]
+                    n_gen_sample = n_generated_sample if n_generated_sample is not None else data.shape[0]
                     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
-                                                                feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=n_generated_sample, from_prior=gen_from_prior)
+                                                                feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=n_gen_sample, from_prior=gen_from_prior)
                 
                     tensor_list = list(est_data_gen_transformed)
                     full_data_tensor = torch.cat(tensor_list, dim=0)
