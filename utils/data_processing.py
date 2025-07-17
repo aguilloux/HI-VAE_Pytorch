@@ -471,3 +471,18 @@ def encode_and_bind(df, feature):
         df = pd.concat([df.drop(columns=[feature]), dummies], axis=1)
         
     return df
+
+
+
+# from torch.utils.data import Dataset
+
+# class MyCustomDataset(Dataset):
+#     def __init__(self, data_tensor, miss_mask_tensor):
+#         self.data = data_tensor
+#         self.miss = miss_mask_tensor
+
+#     def __len__(self):
+#         return self.data.shape[0]
+
+#     def __getitem__(self, idx):
+#         return self.data[idx], self.miss[idx]

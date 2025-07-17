@@ -14,6 +14,8 @@ import seaborn as sns
 import utils
 import utils.likelihood
 import utils.data_processing
+# from utils.data_processing import MyCustomDataset
+# from torch.utils.data import DataLoader
 import utils.theta_estimation
 warnings.filterwarnings("ignore")
 
@@ -66,7 +68,17 @@ def train_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, bat
     # if diff_privacy:
     #     from opacus import PrivacyEngine
     #     privacy_engine = PrivacyEngine()
-    #     vae_model, optimizer = 
+    #     dataset = MyCustomDataset(data_train, miss_mask_train)
+    #     train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    #     vae_model, optimizer, train_loader = privacy_engine.make_private_with_epsilon(
+    #         module=vae_model,
+    #         optimizer=optimizer,
+    #         data_loader=train_loader,
+    #         target_epsilon=8.0,
+    #         target_delta=1e-5,
+    #         epochs=epochs,
+    #         max_grad_norm=1.0,
+    #     )
 
     start_time = time.time()
     loss_train, error_observed_train, error_missing_train = [], [], []
@@ -473,7 +485,7 @@ def get_batchsize(n_samples, n_splits):
 
     return batch_size
 
-def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, study_name='optuna_study_surv_hivae', metric='survival_km_distance', method='', gen_from_prior=False, condition=None, cond_df=None):
+def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, n_generated_sample=None, study_name='optuna_study_surv_hivae', metric='survival_km_distance', method='', gen_from_prior=False, condition=None, cond_df=None):
    
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
     miss_mask = miss_mask
@@ -531,8 +543,10 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
                                                     task_type='survival_analysis', 
                                                     use_cache=True)
                 else:
+                    if n_generated_sample is None:
+                        n_generated_sample = data.shape[0]
                     est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
-                                                                feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=data.shape[0], from_prior=gen_from_prior)
+                                                                feat_types_dict, n_generated_dataset=n_generated_dataset, n_generated_sample=n_generated_sample, from_prior=gen_from_prior)
                 
                     tensor_list = list(est_data_gen_transformed)
                     full_data_tensor = torch.cat(tensor_list, dim=0)
