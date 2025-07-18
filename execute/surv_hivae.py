@@ -372,7 +372,7 @@ def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_
     dim_latent_s = params["s_dim"]
     lr = params["lr"]
     batch_size = params["batch_size"]
-    batch_size = min(batch_size, 0.9*df.shape[0]) # Adjust batch size if larger than dataset
+    batch_size = min(batch_size, int(0.9*df.shape[0])) # Adjust batch size if larger than dataset
     if "n_intervals" in params:
         # HI_VAE piecewise
         intervals = get_intervals(df, params["n_intervals"])
