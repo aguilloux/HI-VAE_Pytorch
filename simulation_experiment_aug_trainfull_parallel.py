@@ -143,7 +143,7 @@ def run(MC_id):
                        "HI-VAE_piecewise_prior" : surv_hivae}
     
     # MONTE-CARLO EXPERIMENT
-    n_MC_exp = 10
+    n_MC_exp = 11
     treat_effects = np.array([0.0, 0.4]) # np.arange(0., 1.1, 0.2)
     list_n_samples_control = [(1/3), (2/3), 1.0]
     n_generated_dataset = 200
@@ -271,20 +271,20 @@ def run(MC_id):
                         else:
                             gen_from_prior = False
                         feat_types_dict_ext = adjust_feat_types_for_generator(generator_name, feat_types_dict)
-                        condition = {'var': 'treatment_0', 'value': 1.0, 'n_samples': treated.shape[0]}  # Condition on the control group
+                        condition = {'var': 'treatment_0', 'value': 1.0, 'n_samples': max(control.shape[0], treated.shape[0])}  # Condition on the control group
                         data_gen_control = generators_dict[generator_name].run(df_init_full_encoded, miss_mask_full, 
                                                                             true_miss_mask_full, feat_types_dict_ext, 
                                                                             n_generated_dataset, params=best_params, 
                                                                             epochs=10000, gen_from_prior=gen_from_prior,
                                                                             condition=condition)
                     elif generator_name in ["Surv-VAE"]:
-                        condition = {'var': 'treatment', 'value': 0.0, 'n_samples': treated.shape[0]}
+                        condition = {'var': 'treatment', 'value': 0.0, 'n_samples': max(control.shape[0], treated.shape[0])}
                         data_gen_control = generators_dict[generator_name].run(data_init_full, columns=fnames, 
                                                                             target_column="censor", time_to_event_column="time", 
                                                                             n_generated_dataset=n_generated_dataset, 
                                                                             params=best_params, condition=condition)
                     else:
-                        indices = torch.cat((torch.arange(0, control.shape[0]), torch.randint(0, control.shape[0], (treated.shape[0] - control.shape[0],))))
+                        indices = torch.cat((torch.arange(0, control.shape[0]), torch.randint(0, control.shape[0], (max(control.shape[0], treated.shape[0]) - control.shape[0],))))
                         cond_gen = SurvivalAnalysisDataLoader(df_init_control.loc[indices], target_column="censor", time_to_event_column="time")[["censor", "treatment"]]
                         # cond_gen = df_init_control[["censor", "treatment"]]
                         data_gen_control = generators_dict[generator_name].run(data_init_full, columns=fnames, 
