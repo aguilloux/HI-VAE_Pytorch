@@ -474,7 +474,7 @@ def encode_and_bind(df, feature):
 
 
 
-# from torch.utils.data import Dataset
+from torch.utils.data import Dataset
 
 # class MyCustomDataset(Dataset):
 #     def __init__(self, data_tensor, miss_mask_tensor):
@@ -486,3 +486,38 @@ def encode_and_bind(df, feature):
 
 #     def __getitem__(self, idx):
 #         return self.data[idx], self.miss[idx]
+
+
+
+class MyCustomDataset(Dataset):
+    def __init__(self, data, miss_mask, types_dict):
+        self.data = data
+        self.miss_mask = miss_mask
+        self.types_dict = types_dict
+        # Precompute feature slice indices
+        self.feature_slices = self._compute_feature_slices(types_dict)
+
+    def _compute_feature_slices(self, types_dict):
+        slices = []
+        start = 0
+        for d in types_dict:
+            dim = int(d["nclass"]) if d["type"] in ['cat', 'ordinal'] else int(d["dim"])
+            slices.append((start, start + dim))
+            start += dim
+        return slices
+
+    def __len__(self):
+        return self.data.shape[0]
+
+    def __getitem__(self, idx):
+        row = self.data[idx]
+        # miss_row = self.miss_mask[idx]
+        
+        # Split features
+        data_list = [row[start:end] for start, end in self.feature_slices]
+        # miss_list = [miss_row[start:end] for start, end in self.feature_slices]
+
+        miss_list = self.miss_mask[idx, :]
+        
+        return data_list, miss_list
+    
