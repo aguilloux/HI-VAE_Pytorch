@@ -448,7 +448,7 @@ def hyperparameter_space(data, n_splits, generator_name):
         IntegerDistribution(name="y_dim", low=10, high=200, step=5),
         IntegerDistribution(name="s_dim", low=10, high=200, step=10),
     ]
-    if generator_name in ["HI-VAE_piecewise", "HI-VAE_piecewise_prior"]:
+    if "HI-VAE_piecewise" in generator_name:
        hp_space.append(CategoricalDistribution(name="n_layers_surv_piecewise", choices=[1, 2]))
        hp_space.append(CategoricalDistribution(name="n_intervals", choices=[5, 10, 15, 20]))
 
@@ -494,7 +494,7 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
         set_seed()
         hp_space = hyperparameter_space(df, n_splits, generator_name)
         params = suggest_all(trial, hp_space) # dict of hyperparameters
-        if generator_name in ["HI-VAE_piecewise", "HI-VAE_piecewise_prior"]:
+        if "HI-VAE_piecewise" in generator_name:
             intervals = get_intervals(df, params["n_intervals"])
             n_layers = params["n_layers_surv_piecewise"]
         else:
@@ -520,7 +520,11 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
                             feat_types_dict=feat_types_dict,
                             intervals_surv_piecewise=intervals,
                             n_layers_surv_piecewise=n_layers)
-                model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
+
+                if "_DP" in generator_name:
+                    model_hivae, _, _ = train_HIVAE_DP(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
+                else:
+                    model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
                 # Generate
                 if condition is not None:
                     est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask,
@@ -660,7 +664,7 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
     else: 
         sampler = optuna.samplers.TPESampler(seed=10)
         study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db', sampler=sampler)
-        if generator_name in ["HI-VAE_piecewise", "HI-VAE_piecewise_prior"]:
+        if "HI-VAE_piecewise" in generator_name:
             default_params = {"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}
         else: 
             default_params = {"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20}
@@ -682,7 +686,7 @@ def run_CV(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, 
     miss_mask = miss_mask
     true_miss_mask = true_miss_mask
         
-    if generator_name in ["HI-VAE_piecewise", "HI-VAE_piecewise_prior"]:
+    if "HI-VAE_piecewise" in generator_name:
         intervals = get_intervals(df, params["n_intervals"])
         n_layers = params["n_layers_surv_piecewise"]
     else:
@@ -809,7 +813,6 @@ def train_HIVAE_DP(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, 
     #     epochs=epochs,
     #     # max_grad_norm=1.0,
     # )
-
     vae_model, optimizer, train_loader = privacy_engine.make_private(
         module=vae_model,
         optimizer=optimizer,
@@ -831,8 +834,6 @@ def train_HIVAE_DP(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, 
             data_list_observed = [data * batch_miss_list[:, i].view(data.shape[0], 1) for i, data in enumerate(batch_data_list)]
             # data_list_observed = [data * miss[:, None] for data, miss in zip(batch_data_list, batch_miss_list)]
 
-            print(data_list_observed[0].shape)
-
             # Compute loss
             optimizer.zero_grad()
             vae_res = vae_model.forward(data_list_observed, batch_data_list, batch_miss_list, tau, n_generated_dataset=1)
@@ -852,20 +853,16 @@ def train_HIVAE_DP(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, 
 
         # Concatenate samples in arrays
         s_total, z_total, y_total, est_data_train = statistic.samples_concatenation(samples_list)
-        
-        # Transform discrete variables back to the original values
-        data_train_transformed = data_processing.discrete_variables_transformation(data_train[: n_train_samples], feat_types_dict)
-        est_data_train_transformed = data_processing.discrete_variables_transformation(est_data_train[0], feat_types_dict)
 
-        print(data_train_transformed.shape)
-        print(est_data_train_transformed.shape)
-        print(n_train_samples)
+        n_train_samples = min(est_data_train[0].shape[0], data_train.shape[0])
+        # Transform discrete variables back to the original values
+        data_train_transformed = data_processing.discrete_variables_transformation(data_train[:n_train_samples], feat_types_dict)
+        est_data_train_transformed = data_processing.discrete_variables_transformation(est_data_train[0][:n_train_samples], feat_types_dict)
 
         # Compute errors
         error_observed_samples, error_missing_samples = statistic.error_computation(data_train_transformed, est_data_train_transformed, 
                                                                                     feat_types_dict, 
-                                                                                    miss_mask[:est_data_train_transformed.shape[0]] # miss_mask[:n_train_samples]
-                                                                                    )
+                                                                                    miss_mask[:n_train_samples])
         
         # Create global dictionary of the distribution parameters
         q_params_complete = statistic.q_distribution_params_concatenation(q_params_list)

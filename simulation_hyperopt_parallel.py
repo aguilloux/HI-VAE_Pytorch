@@ -36,7 +36,7 @@ def run(generator_name):
     scale_C = 2.5
     scale_C_indep = 3.9
     feature_types_list = ["real", "cat"]
-    independent = False
+    independent = True
     data_types_create = True
 
     control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
@@ -50,7 +50,7 @@ def run(generator_name):
         os.makedirs("./dataset/")
 
     # Save the data
-    dataset_name = "Simulations_6_dep_bis"
+    dataset_name = "Simulations_6_indep"
     if not os.path.exists("./dataset/" + dataset_name):
         os.makedirs("./dataset/" + dataset_name)
 
@@ -122,7 +122,9 @@ def run(generator_name):
                     "Surv-GAN" : surv_gan,
                     "Surv-VAE" : surv_vae, 
                     "HI-VAE_weibull_prior" : surv_hivae, 
-                    "HI-VAE_piecewise_prior" : surv_hivae}
+                    "HI-VAE_piecewise_prior" : surv_hivae,
+                    "HI-VAE_weibull_DP" : surv_hivae, 
+                    "HI-VAE_piecewise_DP" : surv_hivae}
     
     # Set a unique working directory for this job
     original_dir, work_dir = setup_unique_working_dir("parallel_runs")
@@ -147,11 +149,11 @@ def run(generator_name):
     else: 
         print("Creating new optuna study for {}...".format(generator_name))
 
-    if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
+    if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior", "HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"]:
         feat_types_dict_ext = feat_types_dict.copy()
         for i in range(len(feat_types_dict)):
             if feat_types_dict_ext[i]['name'] == "survcens":
-                if generator_name in ["HI-VAE_weibull", "HI-VAE_weibull_prior"]:
+                if "HI-VAE_weibull" in generator_name: # in ["HI-VAE_weibull", "HI-VAE_weibull_prior"]:
                     feat_types_dict_ext[i]["type"] = 'surv_weibull'
                 elif generator_name in ["HI-VAE_lognormal"]:
                     feat_types_dict_ext[i]["type"] = 'surv'
@@ -213,6 +215,7 @@ if __name__ == "__main__":
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["Surv-GAN"]  
-    generators_sel = ["HI-VAE_piecewise"] 
+    # generators_sel = ["HI-VAE_piecewise"] 
+    generators_sel = ["HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"] 
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])
