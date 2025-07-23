@@ -178,7 +178,7 @@ def simulation(treatment_effect, n_samples, independent = True, feature_types_li
     n_feature_types = len(feature_types_list)
     n_features = n_feature_types * n_features_bytype
     feat_coefs = np.concatenate([weights_sparse_exp(n_features_bytype, n_active_features) for _ in range(len(feature_types_list))])
-    coefs = np.insert(feat_coefs, 0, treatment_effect)
+    coefs = np.insert(feat_coefs, 0, -treatment_effect)
     
     # Generate feature matrix
     X = features_normal_cov_toeplitz(n_samples, n_features)
@@ -253,7 +253,7 @@ def simulation(treatment_effect, n_samples, independent = True, feature_types_li
     else :
         return(control, treated)    
 
-def cpower(mc , mi , loghaz,alpha):
+def cpower(mc , mi , loghaz, alpha):
     """
     mc : number of survivors in control arm
     mi : number of survivors in treated arm
