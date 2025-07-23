@@ -11,18 +11,27 @@ Created on Mon Feb 17 16:17:14 2025
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import utils
 import csv
+import random
+import numpy as np
 
-import utils.likelihood
-import utils.data_processing
-import utils.theta_estimation
+import likelihood, statistic, data_processing, theta_estimation
 
+def set_seed(seed=1):
+    random.seed(seed)                            # Python built-in
+    np.random.seed(seed)                         # NumPy
+    torch.manual_seed(seed)                      # PyTorch (CPU)
+    torch.cuda.manual_seed_all(seed)
+    # Set deterministic behavior in PyTorch
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True)
 
 class HIVAE(nn.Module):
     def __init__(self, input_dim, z_dim, s_dim, y_dim, y_dim_partition=[], feat_types_dict=[], intervals_surv_piecewise=None, n_layers_surv_piecewise=2):
         
         super().__init__()
+        set_seed()
         self.feat_types_list = feat_types_dict
 
         # Determine Y dimensionality
@@ -100,7 +109,7 @@ class HIVAE(nn.Module):
         """
         
         # Batch normalization 
-        X_list, normalization_params = utils.data_processing.batch_normalization(batch_data_oberved, self.feat_types_list, batch_miss)
+        X_list, normalization_params = data_processing.batch_normalization(batch_data_oberved, self.feat_types_list, batch_miss)
         
         # Encode
         X = torch.cat(X_list, dim=1) 
@@ -160,23 +169,22 @@ class HIVAE(nn.Module):
         p_params = {}
 
         # Compute p(z|s)
-        mean_pz, log_var_pz = utils.statistic.z_prior_GMM(samples["s"], self.z_distribution_layer)
+        mean_pz, log_var_pz = statistic.z_prior_GMM(samples["s"], self.z_distribution_layer)
         p_params["z"] = (mean_pz, log_var_pz)
 
         # Compute deterministic y layer
         samples["y"] = self.y_layer(samples["z"])
 
         # Partition y
-        grouped_samples_y = utils.data_processing.y_partition(samples["y"], self.feat_types_list, self.y_dim_partition)
+        grouped_samples_y = data_processing.y_partition(samples["y"], self.feat_types_list, self.y_dim_partition)
 
         # Compute θ parameters    
-        theta = utils.theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples["s"], self.feat_types_list, miss_list, self.theta_layer)
+        theta = theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples["s"], self.feat_types_list, miss_list, self.theta_layer)
 
         # Compute log-likelihood and reconstructed data
-        p_params["x"], log_p_x, log_p_x_missing, samples["x"] = utils.likelihood.loglik_evaluation(
+        p_params["x"], log_p_x, log_p_x_missing, samples["x"] = likelihood.loglik_evaluation(
             batch_data_list, self.feat_types_list, miss_list, theta, normalization_params, n_generated_dataset
         )
-
         return p_params, log_p_x, log_p_x_missing, samples
 
 
@@ -222,7 +230,6 @@ class HIVAE(nn.Module):
         KL_z = -0.5 * self.z_dim + 0.5 * torch.sum(
             torch.exp(log_var_qz - log_var_pz) + (mean_pz - mean_qz).pow(2) / torch.exp(log_var_pz) - log_var_qz + log_var_pz, dim=1
         )
-
         # Expectation of log p(x|y)
         loss_reconstruction = torch.sum(log_p_x, dim=0)
 
@@ -365,11 +372,11 @@ class HIVAE_inputDropout(HIVAE):
         """
 
         #Create the proposal of q(s|x^o)
-        samples_s, s_params = utils.statistic.s_proposal_multinomial(X, self.s_layer, tau)
+        samples_s, s_params = statistic.s_proposal_multinomial(X, self.s_layer, tau)
 
         # Compute q(z|s,x^o)
         batch_size = X.shape[0]
-        samples_z, z_params = utils.statistic.z_proposal_GMM(X, samples_s, batch_size, self.z_dim, self.z_layer)
+        samples_z, z_params = statistic.z_proposal_GMM(X, samples_s, batch_size, self.z_dim, self.z_layer)
 
         q_params = {"s": s_params, "z": z_params} 
         samples = {"s": samples_s, "z": samples_z}

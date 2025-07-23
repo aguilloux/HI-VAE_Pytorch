@@ -210,7 +210,7 @@ def print_loss(epoch, start_time, ELBO, avg_KL_s, avg_KL_z):
           % (epoch, time.time() - start_time, ELBO, avg_KL_z, avg_KL_s, ELBO + avg_KL_z + avg_KL_s))
 
 
-def visualize_general_perf(scores, metrics):
+def visualize_general_perf(scores, metrics, title = None):
     """
     Generate boxplots to visualize performance scores across different generators.
 
@@ -243,6 +243,8 @@ def visualize_general_perf(scores, metrics):
             ax.legend(title='Maximize \u2191', title_fontsize=15)
         else:
             ax.legend(title='Minimize \u2193', title_fontsize=15)
+    if title is not None:
+        plt.suptitle(title, y=0.8, fontsize=20, fontweight="semibold")
     plt.tight_layout(pad=3)
     plt.show()
 
