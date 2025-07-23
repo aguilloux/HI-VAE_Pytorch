@@ -255,7 +255,7 @@ def generate_from_condition_HIVAE(vae_model, df, miss_mask, true_miss_mask, feat
 
     
 
-def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample=None, from_prior=False, return_latent_vectors=False):
+def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample=None, from_prior=False):
 
     # Compute real missing mask
     miss_mask = torch.multiply(miss_mask, true_miss_mask)
@@ -271,11 +271,8 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
 
     batch_size = n_generated_sample
  
-
     with torch.no_grad():
-
         samples_list = []
-        
         data_list, miss_list = data_processing.next_batch(data_ext, feat_types_dict, miss_mask_ext, batch_size, 0)
         # Mask unknown data (set unobserved values to zero)
         data_list_observed = [data * miss_list[:, i].view(batch_size, 1) for i, data in enumerate(data_list)]
@@ -302,38 +299,24 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
         else:
             vae_res = vae_model.forward(data_list_observed, data_list, miss_list, tau=1e-3, n_generated_dataset=n_generated_dataset)
             samples_list.append(vae_res["samples"])
+        
+        #Concatenate samples in arrays
+        est_data_gen = statistic.samples_concatenation(samples_list)[-1]
+        est_data_gen_transformed = []
+        for j in range(n_generated_dataset):
+            data_trans = data_processing.discrete_variables_transformation(est_data_gen[j], feat_types_dict)
+            data_trans = data_processing.survival_variables_transformation(data_trans, feat_types_dict)
+            est_data_gen_transformed.append(data_trans.unsqueeze(0))
+            
+        est_data_gen_transformed = torch.cat(est_data_gen_transformed, dim=0)
 
-        if return_latent_vectors:
-            #Concatenate samples in arrays
-            s_total, z_total, y_total, est_data_gen = statistic.samples_concatenation(samples_list)
-            est_data_gen_transformed = []
-            for j in range(n_generated_dataset):
-                data_trans = data_processing.discrete_variables_transformation(est_data_gen[j], feat_types_dict)
-                data_trans = data_processing.survival_variables_transformation(data_trans, feat_types_dict)
-                est_data_gen_transformed.append(data_trans.unsqueeze(0))
-                
-            est_data_gen_transformed = torch.cat(est_data_gen_transformed, dim=0)
-
-            return est_data_gen_transformed, s_total, z_total, y_total
-
-        else:
-            #Concatenate samples in arrays
-            est_data_gen = statistic.samples_concatenation(samples_list)[-1]
-            est_data_gen_transformed = []
-            for j in range(n_generated_dataset):
-                data_trans = data_processing.discrete_variables_transformation(est_data_gen[j], feat_types_dict)
-                data_trans = data_processing.survival_variables_transformation(data_trans, feat_types_dict)
-                est_data_gen_transformed.append(data_trans.unsqueeze(0))
-                
-            est_data_gen_transformed = torch.cat(est_data_gen_transformed, dim=0)
-
-            return est_data_gen_transformed
+        return est_data_gen_transformed
 
 
 
 def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_generated_sample=None,
         params={"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}, 
-        epochs=1000, verbose=True, plot=False, gen_from_prior=False, condition=None, return_latent_vectors=False, differential_privacy=False):
+        epochs=1000, verbose=True, plot=False, gen_from_prior=False, condition=None, differential_privacy=False):
 
     set_seed()
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
@@ -374,25 +357,17 @@ def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_
         est_data_gen_transformed_list = []
         for n_generated_sample_ in n_generated_sample:
             if condition is not None:
-                est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask,
-                                                                        feat_types_dict, n_generated_dataset, n_generated_sample_, from_prior=gen_from_prior, condition=condition)
+                est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample_, from_prior=gen_from_prior, condition=condition)
             else:
-                est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
-                                                        feat_types_dict, n_generated_dataset, n_generated_sample_, from_prior=gen_from_prior)
+                est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample_, from_prior=gen_from_prior)
             est_data_gen_transformed_list.append(est_data_gen_transformed)
 
         return est_data_gen_transformed_list
     else:
         if condition is not None:
-            est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask,
-                                                                    feat_types_dict, n_generated_dataset, n_generated_sample, from_prior=gen_from_prior, condition=condition)
+            est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample, from_prior=gen_from_prior, condition=condition)
         else:
-            if return_latent_vectors:
-                est_data_gen_transformed, s_total, z_total, y_total = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
-                                                    feat_types_dict, n_generated_dataset, n_generated_sample, from_prior=gen_from_prior, return_latent_vectors=True)
-            else:
-                est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask,
-                                                    feat_types_dict, n_generated_dataset, n_generated_sample, from_prior=gen_from_prior)
+            est_data_gen_transformed = generate_from_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample, from_prior=gen_from_prior)
 
         if plot:
             loss_track = {"epoch": list(range(1, len(loss_train) + 1)),
@@ -413,10 +388,7 @@ def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_
             plt.tight_layout()
             plt.show()
 
-        if return_latent_vectors:
-            return est_data_gen_transformed, s_total, z_total, y_total
-        else:
-            return est_data_gen_transformed
+        return est_data_gen_transformed
 
 
 
