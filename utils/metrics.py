@@ -190,16 +190,28 @@ def general_metrics(data_init, data_gen, generator):
 
     synthcity_dataloader_init = SurvivalAnalysisDataLoader(data_init, target_column = "censor", time_to_event_column = "time")
     metrics = {
-    'sanity': ['nearest_syn_neighbor_distance'],
-    'stats': ['jensenshannon_dist', 'ks_test', 'survival_km_distance'],
-    'performance': ['feat_rank_distance'],
-    'detection': ['detection_xgb'],
-    'privacy': ['k-map', 'distinct l-diversity', 'identifiability_score']
-}
+        'sanity': ['nearest_syn_neighbor_distance'],
+        'stats': ['jensenshannon_dist', 'ks_test', 'survival_km_distance'],
+        'performance': ['feat_rank_distance'],
+        'detection': ['detection_xgb'],
+        'privacy': ['k-map', 'distinct l-diversity', 'identifiability_score']
+    }
+
+    # Define expected metrics and readable names
+    expected_metrics = {
+        "stats.jensenshannon_dist.marginal": "J-S distance",
+        "stats.ks_test.marginal": "KS test",
+        "stats.survival_km_distance.abs_optimism": "Survival curves distance",
+        "detection.detection_xgb.mean": "Detection XGB",
+        "sanity.nearest_syn_neighbor_distance.mean": "NNDR",
+        "privacy.k-map.score": "K-map score"
+    }
+
     scores = []
     for idx, generated_data in enumerate(data_gen):
         enable_reproducible_results(idx)
         clear_cache()
+
         synthcity_dataloader_syn = SurvivalAnalysisDataLoader(generated_data, target_column = "censor", time_to_event_column = "time")
 
         # evaluation = Metrics().evaluate(X_gt=synthcity_dataloader_init, # can be dataloaders or dataframes
@@ -222,13 +234,26 @@ def general_metrics(data_init, data_gen, generator):
                                         task_type='survival_analysis', 
                                         # n_folds=1,
                                         use_cache=True)
-        selected_metrics = evaluation.T[["stats.jensenshannon_dist.marginal",
-                                          "stats.ks_test.marginal", 
-                                          "stats.survival_km_distance.abs_optimism",
-                                          "detection.detection_xgb.mean", 
-                                          "sanity.nearest_syn_neighbor_distance.mean", 
-                                          "privacy.k-map.score"]].T["mean"].values
-        scores.append(selected_metrics)
+        
+        # selected_metrics = evaluation.T[["stats.jensenshannon_dist.marginal",
+        #                                   "stats.ks_test.marginal", 
+        #                                   "stats.survival_km_distance.abs_optimism",
+        #                                   "detection.detection_xgb.mean", 
+        #                                   "sanity.nearest_syn_neighbor_distance.mean", 
+        #                                   "privacy.k-map.score"]].T["mean"].values
+        # scores.append(selected_metrics)
+        # print("selected_metrics: ", selected_metrics)
+
+        # Safely retrieve all selected metrics
+        values = []
+        for metric in expected_metrics:
+            if metric in evaluation.T.columns:
+                val = evaluation.T[[metric]].T["mean"].values[0]
+            else:
+                val = np.nan
+            values.append(val)
+        # print("values: ", values)
+        scores.append(values)
 
     score_df = pd.DataFrame(scores, columns=["J-S distance", "KS test", "Survival curves distance", 
                                              "Detection XGB", "NNDR", "K-map score"])

@@ -914,7 +914,154 @@ def train_HIVAE_DP(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, 
     return vae_model, loss_train, loss_val
 
 
+def train_HIVAE_bis(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose = True):
 
+    # Train-test split on control
+    train_test_share = .9
+    n_samples = data.shape[0]
+    n_train_samples = int(train_test_share * n_samples)
+    train_index = np.random.choice(n_samples, n_train_samples, replace=False)
+    test_index = [i for i in np.arange(n_samples) if i not in train_index]
+
+    data_train = data[train_index]
+    miss_mask_train = miss_mask[train_index]
+    true_miss_mask_train = true_miss_mask[train_index]
+
+    data_test = data[test_index]
+    miss_mask_test = miss_mask[test_index]
+    true_miss_mask_test = true_miss_mask[test_index]
+
+    # Number of batches
+    n_train_samples = data_train.shape[0]
+    if n_train_samples < batch_size:
+        raise ValueError("Batch size must be less than the number of training samples")
+    n_batches_train = int(np.floor(n_train_samples / batch_size))
+    # n_train_samples = n_batches_train * batch_size
+
+    # Compute real missing mask
+    miss_mask_train = torch.multiply(miss_mask_train, true_miss_mask_train)
+
+    # On test/val
+    n_test_samples = data_test.shape[0]
+    # Adjust batch size if larger than dataset
+    batch_test_size = n_test_samples
+    # Number of batches
+    n_batches_test = int(np.floor(n_test_samples / batch_test_size))
+
+    # Compute real missing mask
+    miss_mask_test = torch.multiply(miss_mask_test, true_miss_mask_test)
+    # n_generated_sample = 10
+
+    # Training
+    optimizer = optim.Adam(vae_model.parameters(), lr=lr)
+
+    start_time = time.time()
+    loss_train, error_observed_train, error_missing_train = [], [], []
+    loss_val, error_observed_val, error_missing_val = [], [], []
+
+    rng = np.random.default_rng(seed=42)
+    # Setting for early stopping
+    best_val_loss = float('inf')
+
+    patience = 10 # 5
+    n_iter_validation = 50
+    n_iter_min = 100
+    counter = 0
+
+    dataset = MyCustomDataset(data_train, miss_mask_train, feat_types_dict)
+    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True) #, drop_last=True)
+
+    for epoch in range(epochs):
+
+        avg_loss, avg_KL_s, avg_KL_z = 0.0, 0.0, 0.0
+        avg_loss_val, avg_KL_s_val, avg_KL_z_val = 0.0, 0.0, 0.0
+        samples_list, p_params_list, q_params_list, log_p_x_total, log_p_x_missing_total = [], [], [], [], []
+        tau = max(1.0 - 0.01 * epoch, 1e-3)
+
+        for batch_data_list, batch_miss_list in train_loader:
+
+            # Mask unknown data (set unobserved values to zero)
+            data_list_observed = [data * batch_miss_list[:, i].view(data.shape[0], 1) for i, data in enumerate(batch_data_list)]
+            # data_list_observed = [data * miss[:, None] for data, miss in zip(batch_data_list, batch_miss_list)]
+
+            # Compute loss
+            optimizer.zero_grad()
+            vae_res = vae_model.forward(data_list_observed, batch_data_list, batch_miss_list, tau, n_generated_dataset=1)
+            vae_res["neg_ELBO_loss"].backward()
+            optimizer.step()
+
+            avg_loss += vae_res["neg_ELBO_loss"].item() / n_batches_train
+            avg_KL_s += torch.mean(vae_res["KL_s"]).item() / n_batches_train
+            avg_KL_z += torch.mean(vae_res["KL_z"]).item() / n_batches_train
+
+            # Save the generated samlpes and estimated parameters !
+            samples_list.append(vae_res["samples"])
+            p_params_list.append(vae_res["p_params"])
+            q_params_list.append(vae_res["q_params"])
+            log_p_x_total.append(vae_res["log_p_x"])
+            log_p_x_missing_total.append(vae_res["log_p_x_missing"])
+
+        # Concatenate samples in arrays
+        s_total, z_total, y_total, est_data_train = statistic.samples_concatenation(samples_list)
+
+        n_train_samples = min(est_data_train[0].shape[0], data_train.shape[0])
+        # Transform discrete variables back to the original values
+        data_train_transformed = data_processing.discrete_variables_transformation(data_train[:n_train_samples], feat_types_dict)
+        est_data_train_transformed = data_processing.discrete_variables_transformation(est_data_train[0][:n_train_samples], feat_types_dict)
+
+        # Compute errors
+        error_observed_samples, error_missing_samples = statistic.error_computation(data_train_transformed, est_data_train_transformed, 
+                                                                                    feat_types_dict, 
+                                                                                    miss_mask[:n_train_samples])
+        
+        # Create global dictionary of the distribution parameters
+        q_params_complete = statistic.q_distribution_params_concatenation(q_params_list)
+        
+        # Number of clusters created
+        cluster_index = torch.argmax(q_params_complete['s'], 1)
+        cluster = torch.unique(cluster_index)
+        # print('Clusters: ' + str(len(cluster)))
+
+        # Save average loss and error
+        loss_train.append(avg_loss)
+        error_observed_train.append(torch.mean(error_observed_samples))
+        error_missing_train.append(torch.mean(error_missing_samples))
+        if verbose:
+            if epoch % 100 == 0:
+                visualization.print_loss(epoch, start_time, -avg_loss, avg_KL_s, avg_KL_z)
+        
+
+        if epoch % n_iter_validation == 0:
+            with torch.no_grad():            
+                for i in range(n_batches_test):
+                    data_list_test, miss_list_test = data_processing.next_batch(data_test, feat_types_dict, miss_mask_test, batch_test_size, i)
+                
+                    # Mask unknown data (set unobserved values to zero)
+                    data_list_observed_test = [data * miss_list_test[:, i].view(batch_test_size, 1) for i, data in enumerate(data_list_test)]
+                
+                    vae_res_test = vae_model.forward(data_list_observed_test, data_list_test, miss_list_test, tau=1e-3, n_generated_dataset=1)
+                    avg_loss_val += vae_res_test["neg_ELBO_loss"].item() / n_batches_test
+                    avg_KL_s_val += torch.mean(vae_res_test["KL_s"]).item() / n_batches_test
+                    avg_KL_z_val += torch.mean(vae_res_test["KL_z"]).item() / n_batches_test
+            
+            loss_val.append(avg_loss_val)
+
+            if avg_loss_val >= best_val_loss:
+                counter += 1
+            else: 
+                best_val_loss = avg_loss_val
+                counter = 0
+
+            if counter >= patience and epoch >= n_iter_min:
+                print(f"Early stopping at epoch {epoch}.")
+                break
+        else:
+            loss_val.append(torch.nan)
+
+    if verbose:
+        print("Training finished.")
+    
+    return vae_model, loss_train, loss_val
 
 # def generate_from_prior_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_generated_sample=None):
 

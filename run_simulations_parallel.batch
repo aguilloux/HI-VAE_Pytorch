@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=sim_survkm_parallel
-#SBATCH --output=logs/sim_%A_%a.out
-#SBATCH --error=logs/sim_%A_%a.err
+#SBATCH --job-name=sim_exp_parallel
+#SBATCH --output=logs/sim_exp_%A_%a.out
+#SBATCH --error=logs/sim_exp_%A_%a.err
 #SBATCH --array=0-9  # one task per MC
 #SBATCH --cpus-per-task=4
 #SBATCH --time=2-00:00:00

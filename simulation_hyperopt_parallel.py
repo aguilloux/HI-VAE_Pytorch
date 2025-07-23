@@ -83,7 +83,6 @@ def run(generator_name):
     treated.to_csv(data_file_treated,index=False , header=False)
     types.to_csv(feat_types_file_treated)
 
-
     # Load and transform control data
     df_init_control_encoded, feat_types_dict, miss_mask_control, true_miss_mask_control, _ = data_processing.read_data(data_file_control,
                                                                                                                 feat_types_file_control,
@@ -216,6 +215,7 @@ if __name__ == "__main__":
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
     # generators_sel = ["Surv-GAN"]  
     # generators_sel = ["HI-VAE_piecewise"] 
-    generators_sel = ["HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"] 
+    # generators_sel = ["HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"]
+    generators_sel = ["HI-VAE_weibull_batchcorrect", "HI-VAE_piecewise_batchcorrect"] 
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])
