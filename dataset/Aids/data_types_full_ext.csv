@@ -1,0 +1,11 @@
+,name,type,dim,nclass
+0,survcens,surv_weibull,2,
+1,strat2,cat,1,2
+2,sex,cat,1,2
+3,raceth,cat,1,4
+4,ivdrug,cat,1,2
+5,karnof,cat,1,4
+6,cd4,pos,1,
+7,priorzdv,pos,1,
+8,age,real,1,
+9,treatment,cat,1,2
