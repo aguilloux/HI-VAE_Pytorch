@@ -5,7 +5,11 @@ from synthcity.utils.optuna_sample import suggest_all
 from synthcity.utils.reproducibility import clear_cache, enable_reproducible_results
 from synthcity.metrics.eval import Metrics
 from sklearn.model_selection import KFold
-from utils import metrics
+import sys
+from pathlib import Path
+module_path = Path.cwd().parent / 'utils'
+sys.path.append(str(module_path))
+import metrics
 import numpy as np
 import optuna
 import os

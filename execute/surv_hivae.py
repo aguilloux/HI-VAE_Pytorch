@@ -2,7 +2,6 @@ import numpy as np
 import torch
 import torch.optim as optim
 import time
-from utils import data_processing, visualization, statistic, metrics
 import time
 import pandas as pd
 import importlib
@@ -11,12 +10,17 @@ import warnings
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
-import utils
-import utils.likelihood
-import utils.data_processing
-from utils.data_processing import MyCustomDataset
+
+
+import sys
+from pathlib import Path
+module_path = Path.cwd().parent / 'utils'
+sys.path.append(str(module_path))
+import data_processing, visualization, statistic, metrics, likelihood, theta_estimation
+from data_processing import MyCustomDataset
 from torch.utils.data import DataLoader
-import utils.theta_estimation
+
+
 warnings.filterwarnings("ignore")
 
 def set_seed(seed=1):
@@ -211,21 +215,21 @@ def generate_from_condition_HIVAE(vae_model, df, miss_mask, true_miss_mask, feat
             data_list_observed = [data * miss_list[:, i].view(batch_size, 1) for i, data in enumerate(data_list)]
 
             if from_prior:
-                _, normalization_params = utils.data_processing.batch_normalization(data_list_observed, vae_model.feat_types_list, miss_list)
+                _, normalization_params = data_processing.batch_normalization(data_list_observed, vae_model.feat_types_list, miss_list)
 
                 s_samples = torch.randint(0, vae_model.s_dim, (n_generated_sample,))
                 samples_s = torch.nn.functional.one_hot(s_samples, num_classes=vae_model.s_dim).float()
-                mean_pz, log_var_pz = utils.statistic.z_prior_GMM(samples_s, vae_model.z_distribution_layer)
+                mean_pz, log_var_pz = statistic.z_prior_GMM(samples_s, vae_model.z_distribution_layer)
                 eps = torch.randn_like(mean_pz)
                 samples_z = mean_pz + torch.exp(log_var_pz / 2) * eps  # mean_pz + eps
                 samples_y = vae_model.y_layer(samples_z)
-                grouped_samples_y = utils.data_processing.y_partition(samples_y, vae_model.feat_types_list, vae_model.y_dim_partition)
+                grouped_samples_y = data_processing.y_partition(samples_y, vae_model.feat_types_list, vae_model.y_dim_partition)
 
                 # Compute θ parameters    
-                theta = utils.theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples_s, vae_model.feat_types_list, miss_list, vae_model.theta_layer)
+                theta = theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples_s, vae_model.feat_types_list, miss_list, vae_model.theta_layer)
 
                 # Compute log-likelihood and reconstructed data
-                _, _, _, samples_x = utils.likelihood.loglik_evaluation(data_list, vae_model.feat_types_list, miss_list, theta, normalization_params, n_generated_dataset)
+                _, _, _, samples_x = likelihood.loglik_evaluation(data_list, vae_model.feat_types_list, miss_list, theta, normalization_params, n_generated_dataset)
                 samples = {"s": samples_s, "z": samples_z, "y": samples_y, "x": samples_x}
                 samples_list.append(samples)
 
@@ -278,21 +282,21 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
         data_list_observed = [data * miss_list[:, i].view(batch_size, 1) for i, data in enumerate(data_list)]
 
         if from_prior:
-            _, normalization_params = utils.data_processing.batch_normalization(data_list_observed, vae_model.feat_types_list, miss_list)
+            _, normalization_params = data_processing.batch_normalization(data_list_observed, vae_model.feat_types_list, miss_list)
 
             s_samples = torch.randint(0, vae_model.s_dim, (n_generated_sample,))
             samples_s = torch.nn.functional.one_hot(s_samples, num_classes=vae_model.s_dim).float()
-            mean_pz, log_var_pz = utils.statistic.z_prior_GMM(samples_s, vae_model.z_distribution_layer)
+            mean_pz, log_var_pz = statistic.z_prior_GMM(samples_s, vae_model.z_distribution_layer)
             eps = torch.randn_like(mean_pz)
             samples_z = mean_pz + torch.exp(log_var_pz / 2) * eps  # mean_pz + eps
             samples_y = vae_model.y_layer(samples_z)
-            grouped_samples_y = utils.data_processing.y_partition(samples_y, vae_model.feat_types_list, vae_model.y_dim_partition)
+            grouped_samples_y = data_processing.y_partition(samples_y, vae_model.feat_types_list, vae_model.y_dim_partition)
 
             # Compute θ parameters    
-            theta = utils.theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples_s, vae_model.feat_types_list, miss_list, vae_model.theta_layer)
+            theta = theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples_s, vae_model.feat_types_list, miss_list, vae_model.theta_layer)
 
             # Compute log-likelihood and reconstructed data
-            _, _, _, samples_x = utils.likelihood.loglik_evaluation(data_list, vae_model.feat_types_list, miss_list, theta, normalization_params, n_generated_dataset)
+            _, _, _, samples_x = likelihood.loglik_evaluation(data_list, vae_model.feat_types_list, miss_list, theta, normalization_params, n_generated_dataset)
             samples = {"s": samples_s, "z": samples_z, "y": samples_y, "x": samples_x}
             samples_list.append(samples)
 
