@@ -103,7 +103,7 @@ def run(MC_id):
 
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_6_indep"
+    dataset_name = "Simulations_indep_traincontrol_DP"
     base_path = prepare_dataset_dirs(dataset_name)
     param_file = os.path.join(base_path, "params.txt")
     save_parameters(param_file, {
@@ -126,7 +126,7 @@ def run(MC_id):
     # true_miss_file = None
 
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
-    generators_sel = ["HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"]
+    generators_sel = ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior", "HI-VAE_weibull_prior_DP", "HI-VAE_piecewise_prior_DP"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
@@ -134,8 +134,8 @@ def run(MC_id):
                        "Surv-VAE" : surv_vae, 
                        "HI-VAE_weibull_prior" : surv_hivae, 
                        "HI-VAE_piecewise_prior" : surv_hivae,
-                       "HI-VAE_weibull_DP" : surv_hivae, 
-                       "HI-VAE_piecewise_DP" : surv_hivae}
+                       "HI-VAE_weibull_prior_DP" : surv_hivae, 
+                       "HI-VAE_piecewise_prior_DP" : surv_hivae}
 
     # BEST PARAMETERS
     best_params_dict = {}
@@ -218,8 +218,8 @@ def run(MC_id):
         # For each generator, perform the data generation with the best params
         for generator_name in generators_sel:
             best_params = best_params_dict[generator_name]
-            if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior",  "HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"]:
-                if generator_name in ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
+            if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior",  "HI-VAE_weibull_prior_DP", "HI-VAE_piecewise_prior_DP"]:
+                if "_prior" in generator_name:
                     gen_from_prior = True
                 else:
                     gen_from_prior = False
@@ -329,7 +329,7 @@ def run(MC_id):
 
     MC_init = MC_id * n_MC_exp + 1
     MC_final = (MC_id + 1) * n_MC_exp
-    results.to_csv(f"{original_dir}/dataset/{dataset_name}/results_DP_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
+    results.to_csv(f"{original_dir}/dataset/{dataset_name}/results_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
    
 
 if __name__ == "__main__":
