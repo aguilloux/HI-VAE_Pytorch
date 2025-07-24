@@ -103,7 +103,7 @@ def run(MC_id):
 
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_indep_traincontrol"
+    dataset_name = "Simulations_indep_traincontrol_DP"
     current_path = os.getcwd()  # Get current working directory
     parent_path = os.path.dirname(current_path)
     base_path = prepare_dataset_dirs(parent_path, dataset_name)
@@ -122,7 +122,8 @@ def run(MC_id):
         "independent": independent,
         "data_types_create": data_types_create
     })
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior", "HI-VAE_weibull_prior_DP", "HI-VAE_piecewise_prior_DP"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
@@ -325,7 +326,7 @@ def run(MC_id):
 
     MC_init = MC_id * n_MC_exp + 1
     MC_final = (MC_id + 1) * n_MC_exp
-    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_DP_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
+    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
 
 if __name__ == "__main__":
     MC_id = int(sys.argv[1])

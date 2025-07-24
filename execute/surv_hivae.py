@@ -16,8 +16,8 @@ import sys
 from pathlib import Path
 module_path = Path.cwd().parent / 'utils'
 sys.path.append(str(module_path))
-from utils import data_processing, visualization, statistic, metrics, likelihood, theta_estimation
-from utils.data_processing import MyCustomDataset
+import data_processing, visualization, statistic, metrics, likelihood, theta_estimation
+from data_processing import MyCustomDataset
 from torch.utils.data import DataLoader
 
 
@@ -356,7 +356,7 @@ def run(df, miss_mask, true_miss_mask, feat_types_dict,  n_generated_dataset, n_
     if differential_privacy:
         model_hivae, loss_train, loss_val = train_HIVAE_DP(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
     else:
-        model_hivae, loss_train, loss_val = train_HIVAE_bis(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
+        model_hivae, loss_train, loss_val = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, lr, epochs, verbose)
     if isinstance(n_generated_sample, list):
         est_data_gen_transformed_list = []
         for n_generated_sample_ in n_generated_sample:
@@ -500,7 +500,7 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
                 if "_DP" in generator_name:
                     model_hivae, _, _ = train_HIVAE_DP(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
                 else:
-                    model_hivae, _, _ = train_HIVAE_bis(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
+                    model_hivae, _, _ = train_HIVAE(model_hivae, data, miss_mask, true_miss_mask, feat_types_dict, batch_size, params["lr"], epochs)
                 # Generate
                 if condition is not None:
                     est_data_gen_transformed = generate_from_condition_HIVAE(model_hivae, df, miss_mask, true_miss_mask,
