@@ -122,8 +122,8 @@ def run(generator_name):
                     "Surv-VAE" : surv_vae, 
                     "HI-VAE_weibull_prior" : surv_hivae, 
                     "HI-VAE_piecewise_prior" : surv_hivae,
-                    "HI-VAE_weibull_DP" : surv_hivae, 
-                    "HI-VAE_piecewise_DP" : surv_hivae}
+                    "HI-VAE_weibull_prior_DP" : surv_hivae, 
+                    "HI-VAE_piecewise_prior_DP" : surv_hivae}
     
     # Set a unique working directory for this job
     original_dir, work_dir = setup_unique_working_dir("parallel_runs")
@@ -148,7 +148,7 @@ def run(generator_name):
     else: 
         print("Creating new optuna study for {}...".format(generator_name))
 
-    if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior", "HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"]:
+    if generator_name in ["HI-VAE_lognormal", "HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior", "HI-VAE_weibull_prior_DP", "HI-VAE_piecewise_prior_DP"]:
         feat_types_dict_ext = feat_types_dict.copy()
         for i in range(len(feat_types_dict)):
             if feat_types_dict_ext[i]['name'] == "survcens":
@@ -158,7 +158,7 @@ def run(generator_name):
                     feat_types_dict_ext[i]["type"] = 'surv'
                 else:
                     feat_types_dict_ext[i]["type"] = 'surv_piecewise'
-        if generator_name in ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]:
+        if "_prior" in generator_name:
             gen_from_prior = True
         else:
             gen_from_prior = False
