@@ -1,25 +1,23 @@
 import numpy as np
 import pandas as pd
 import torch
-from scipy.linalg import toeplitz
-from scipy.stats import norm
-
-import matplotlib.pyplot as plt
-from tableone import TableOne
 from sksurv.nonparametric import kaplan_meier_estimator
 
-from utils import data_processing, visualization
-from utils.simulations import *
-from execute import surv_hivae, surv_gan, surv_vae
-from sksurv.nonparametric import kaplan_meier_estimator
-from synthcity.plugins.core.dataloader import SurvivalAnalysisDataLoader
+import sys
+from pathlib import Path
+module_path = Path.cwd().parent / 'utils'
+sys.path.append(str(module_path))
+import data_processing
+from simulations import *
+from metrics import fit_cox_model, general_metrics
+module_path = Path.cwd().parent / 'execute'
+sys.path.append(str(module_path))
+import surv_hivae, surv_gan, surv_vae
 
 import os
 import uuid
 import datetime
 import json
-import sys
-from utils.metrics import fit_cox_model, general_metrics
 
 from synthcity.utils.constants import DEVICE
 print('Device :', DEVICE)
@@ -44,8 +42,8 @@ def true_univ_coef(treatment_effect, independent = True, feature_types_list = ["
     coef_init = fit_cox_model(df_init, columns)[0]
     return coef_init[0]
 
-def prepare_dataset_dirs(dataset_name):
-    base_path = os.path.join("./dataset", dataset_name)
+def prepare_dataset_dirs(parent_path, dataset_name):
+    base_path = os.path.join(parent_path + "/dataset", dataset_name)
     os.makedirs(base_path, exist_ok=True)
     os.makedirs(os.path.join(base_path, "optuna_results"), exist_ok=True)
     return base_path
@@ -104,9 +102,10 @@ def run(MC_id):
     treatment_effect_hyperopt = 0.0 # 0.0
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_6_indep_traincontrol"
-    # dataset_name = "Simulations_6_indep"
-    base_path = prepare_dataset_dirs(dataset_name)
+    dataset_name = "Simulations_aug_indep_traincontrol"
+    current_path = os.getcwd()  # Get current working directory
+    parent_path = os.path.dirname(current_path)
+    base_path = prepare_dataset_dirs(parent_path, dataset_name)
     param_file = os.path.join(base_path, "params.txt")
     save_parameters(param_file, {
         "n_samples": n_samples,
@@ -132,8 +131,8 @@ def run(MC_id):
     # miss_file = os.path.join(base_path, "Missing.csv")
     # true_miss_file = None
 
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
-    # generators_sel = ["HI-VAE_weibull"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["HI-VAE_weibull"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
@@ -143,7 +142,7 @@ def run(MC_id):
                        "HI-VAE_piecewise_prior" : surv_hivae}
     
     # MONTE-CARLO EXPERIMENT
-    n_MC_exp = 10
+    n_MC_exp = 150
     treat_effects = np.arange(0., 1.1, 0.2)
     list_n_samples_control = [(1/3), (2/3), 1.0]
     n_generated_dataset = 200
@@ -170,8 +169,8 @@ def run(MC_id):
 
     print("Run Monte Carlo experiments {} to {}...".format(MC_id * n_MC_exp + 1, (MC_id + 1) * n_MC_exp))
     dataset_name_MC = dataset_name + "/MC_{}to{}".format(MC_id * n_MC_exp + 1, (MC_id + 1) * n_MC_exp) 
-    if not os.path.exists("./dataset/" + dataset_name_MC):
-        os.makedirs("./dataset/" + dataset_name_MC)
+    if not os.path.exists(parent_path + "/dataset/" + dataset_name_MC):
+        os.makedirs(parent_path + "/dataset/" + dataset_name_MC)
 
     for d, perc_control in enumerate(list_n_samples_control):
 
@@ -180,7 +179,7 @@ def run(MC_id):
         # BEST PARAMETERS
         best_params_dict = {}
         name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, (d+1), n_features_bytype, int(treatment_effect_hyperopt))
-        n_trials = 150
+        n_trials = 10
         for generator_name in generators_sel:
             # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
             best_params_file = os.path.join(base_path, "optuna_results", "best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name))
@@ -211,8 +210,8 @@ def run(MC_id):
             control = control.drop(columns='treatment')
             treated = treated.drop(columns='treatment')
 
-            data_file_control = os.path.join(f"{original_dir}/dataset/{dataset_name_MC}", "data_control.csv")
-            feat_types_file_control = os.path.join(f"{original_dir}/dataset/{dataset_name_MC}", "data_types_control.csv")
+            data_file_control = os.path.join(f"{parent_path}/dataset/{dataset_name_MC}", "data_control.csv")
+            feat_types_file_control = os.path.join(f"{parent_path}/dataset/{dataset_name_MC}", "data_types_control.csv")
             
             control.to_csv(data_file_control, index=False, header=False)
             types.to_csv(feat_types_file_control, index=False)
@@ -282,8 +281,8 @@ def run(MC_id):
                                                     scale_C, scale_C_indep, data_types_create, seed=seed)
                 treated = treated.drop(columns='treatment')
 
-                data_file_treated = original_dir + "/dataset/" + dataset_name_MC + "/data_treated.csv"
-                feat_types_file_treated= original_dir + "/dataset/" + dataset_name_MC + "/data_types_treated.csv"
+                data_file_treated = parent_path + "/dataset/" + dataset_name_MC + "/data_treated.csv"
+                feat_types_file_treated= parent_path + "/dataset/" + dataset_name_MC + "/data_types_treated.csv"
                 treated.to_csv(data_file_treated, index=False , header=False)
                 types.to_csv(feat_types_file_treated, index=False)
 
@@ -358,7 +357,7 @@ def run(MC_id):
 
     MC_init = MC_id * n_MC_exp + 1
     MC_final = (MC_id + 1) * n_MC_exp
-    results.to_csv(f"{original_dir}/dataset/{dataset_name}/results_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
+    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
    
 
 if __name__ == "__main__":
