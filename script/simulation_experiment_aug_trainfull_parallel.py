@@ -104,7 +104,7 @@ def run(MC_id):
     treatment_effect_hyperopt = 0.0 # 0.0
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_6_indep_trainfull"
+    dataset_name = "Simulations_aug_indep_trainfull"
     # dataset_name = "Simulations_6_indep"
     base_path = prepare_dataset_dirs(dataset_name)
     param_file = os.path.join(base_path, "params.txt")
