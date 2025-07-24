@@ -16,8 +16,8 @@ import sys
 from pathlib import Path
 module_path = Path.cwd().parent / 'utils'
 sys.path.append(str(module_path))
-from utils import data_processing, visualization, statistic, metrics, likelihood, theta_estimation
-from utils.data_processing import MyCustomDataset
+import data_processing, visualization, statistic, metrics, likelihood, theta_estimation
+from data_processing import MyCustomDataset
 from torch.utils.data import DataLoader
 
 
