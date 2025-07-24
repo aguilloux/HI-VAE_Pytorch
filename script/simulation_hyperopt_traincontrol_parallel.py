@@ -50,7 +50,7 @@ def run(generator_name):
         os.makedirs(parent_path + "/dataset/")
 
     # Save the data
-    dataset_name = "Simulations_indep_traincontrol"
+    dataset_name = "Simulations_indep_traincontrol_DP"
     if not os.path.exists(parent_path + "/dataset/" + dataset_name):
         os.makedirs(parent_path + "/dataset/" + dataset_name)
 
@@ -210,6 +210,7 @@ def setup_unique_working_dir(base_dir="experiments"):
   
 
 if __name__ == "__main__":
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["HI-VAE_weibull_prior", "HI-VAE_piecewise_prior", "HI-VAE_weibull_prior_DP", "HI-VAE_piecewise_prior_DP"] 
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])

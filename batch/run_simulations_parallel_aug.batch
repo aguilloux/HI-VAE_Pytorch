@@ -20,6 +20,6 @@ source activate hivae
 
 # Arguments
 MC_ID=${SLURM_ARRAY_TASK_ID}
-
+cd ../script
 # python3 simulation_experiment_aug_parallel.py $MC_ID
-python3 ../script/simulation_experiment_aug_trainfull_parallel.py $MC_ID
+python3 simulation_experiment_aug_trainfull_parallel.py $MC_ID
