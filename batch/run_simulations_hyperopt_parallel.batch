@@ -21,11 +21,12 @@ source activate hivae
 
 # Arguments
 GENERATOR_ID=${SLURM_ARRAY_TASK_ID}
-cd ../script
+
+
 # python3 simulation_hyperopt_aug_traincontrol_parallel.py $GENERATOR_ID
 # python3 simulation_hyperopt_aug_trainfull_parallel.py $GENERATOR_ID
 # python3 simulation_hyperopt_trainfull_parallel.py $GENERATOR_ID 
-python3 simulation_hyperopt_traincontrol_parallel.py $GENERATOR_ID 
+python3 ../script/simulation_hyperopt_traincontrol_parallel.py $GENERATOR_ID 
 
 
 # SBATCH --gres=gpu:rtx8000:1
