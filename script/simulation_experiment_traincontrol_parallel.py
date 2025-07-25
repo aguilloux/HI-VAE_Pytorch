@@ -227,7 +227,10 @@ def run(MC_id):
                 feat_types_dict_ext = adjust_feat_types_for_generator(generator_name, feat_types_dict)
                 data_gen_control = generators_dict[generator_name].run(df_init_control_encoded, miss_mask_control, 
                                                                        true_miss_mask_control, feat_types_dict_ext, 
-                                                                       n_generated_dataset, params=best_params, epochs=10000, gen_from_prior=gen_from_prior, differential_privacy=differential_privacy)
+                                                                       n_generated_dataset, params=best_params, 
+                                                                       epochs=10000, gen_from_prior=gen_from_prior, 
+                                                                       differential_privacy=differential_privacy,
+                                                                       batchcorrect=True)
             else:
                 data_gen_control = generators_dict[generator_name].run(data_init_control, columns=fnames, 
                                                                        target_column="censor", time_to_event_column="time", 

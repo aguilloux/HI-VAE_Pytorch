@@ -175,7 +175,8 @@ def run(generator_name):
                                                                                         metric=metric_optuna,
                                                                                         study_name=study_name, 
                                                                                         method=method_hyperopt, 
-                                                                                        gen_from_prior=gen_from_prior)
+                                                                                        gen_from_prior=gen_from_prior, 
+                                                                                        batchcorrect=True)
         best_params_dict[generator_name] = best_params
         study_dict[generator_name] = study
         with open(best_params_file, "w") as f:
