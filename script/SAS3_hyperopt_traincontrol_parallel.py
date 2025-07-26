@@ -84,7 +84,7 @@ def run(dataset_name, generator_name):
         os.makedirs(parent_path + "/dataset/" + dataset_name + "/optuna_results")
 
     best_params_dict, study_dict = {}, {}
-    n_trials = 2
+    n_trials = 150
     epochs = 10000
     print("{} trials for {}...".format(n_trials, generator_name))
     study_name = parent_path + "/dataset/" + dataset_name + "/optuna_results/optuna_study_traincontrol_{}_ntrials{}_{}_{}".format(name_config, n_trials, metric_optuna, generator_name)

@@ -35,7 +35,7 @@ def run(generator_name, dataset_name):
     true_miss_file = None
 
     fnames = ['time', 'censor'] + pd.read_csv(feat_types_file_control_ext)["name"].to_list()[1:]
-    # Load and transform full data
+    # Load and transform control data
     df_init_control_encoded_ext, feat_types_dict_control_ext, _, _, _ = data_processing.read_data(data_file_control_ext, 
                                                                         feat_types_file_control_ext, 
                                                                         miss_file, true_miss_file)
