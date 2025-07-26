@@ -16,7 +16,7 @@ module purge
 
 # Load your Python environment
 source /home/$USER/.bashrc
-source activate env_synthcity  
+source activate .venv_HI_VAE_ext  
 
 # Arguments
 GENERATOR_ID=${SLURM_ARRAY_TASK_ID}
