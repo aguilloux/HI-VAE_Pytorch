@@ -282,7 +282,7 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
         data_list_observed = [data * miss_list[:, i].view(batch_size, 1) for i, data in enumerate(data_list)]
 
         if from_prior:
-            _, normalization_params = data_processing.batch_normalization(data_list_observed, vae_model.feat_types_list, miss_list)
+            _, normalization_params = data_processing.batch_normalization(data_list_observed, feat_types_dict, miss_list)
 
             s_samples = torch.randint(0, vae_model.s_dim, (n_generated_sample,))
             samples_s = torch.nn.functional.one_hot(s_samples, num_classes=vae_model.s_dim).float()
@@ -290,13 +290,13 @@ def generate_from_HIVAE(vae_model, data, miss_mask, true_miss_mask, feat_types_d
             eps = torch.randn_like(mean_pz)
             samples_z = mean_pz + torch.exp(log_var_pz / 2) * eps  # mean_pz + eps
             samples_y = vae_model.y_layer(samples_z)
-            grouped_samples_y = data_processing.y_partition(samples_y, vae_model.feat_types_list, vae_model.y_dim_partition)
+            grouped_samples_y = data_processing.y_partition(samples_y, feat_types_dict, vae_model.y_dim_partition)
 
             # Compute θ parameters    
-            theta = theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples_s, vae_model.feat_types_list, miss_list, vae_model.theta_layer)
+            theta = theta_estimation.theta_estimation_from_ys(grouped_samples_y, samples_s, feat_types_dict, miss_list, vae_model.theta_layer)
 
             # Compute log-likelihood and reconstructed data
-            _, _, _, samples_x = likelihood.loglik_evaluation(data_list, vae_model.feat_types_list, miss_list, theta, normalization_params, n_generated_dataset)
+            _, _, _, samples_x = likelihood.loglik_evaluation(data_list, feat_types_dict, miss_list, theta, normalization_params, n_generated_dataset)
             samples = {"s": samples_s, "z": samples_z, "y": samples_y, "x": samples_x}
             samples_list.append(samples)
 
