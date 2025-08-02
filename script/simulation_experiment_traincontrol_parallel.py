@@ -123,7 +123,7 @@ def run(MC_id):
         "data_types_create": data_types_create
     })
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior", "HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
