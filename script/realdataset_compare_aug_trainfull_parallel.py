@@ -54,7 +54,6 @@ def run(dataset_name, generators_sel):
         os.makedirs(parent_path + "/dataset/")
 
     # Save the data
-    dataset_name = "Aids"
     if not os.path.exists(parent_path + "/dataset/" + dataset_name):
         os.makedirs(parent_path + "/dataset/" + dataset_name)
 
