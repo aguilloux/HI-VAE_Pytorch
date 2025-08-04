@@ -19,8 +19,6 @@ import torch
 import multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
-torch.use_deterministic_algorithms(False)
-
 def run_worker(return_dict, model, params, data, count, cond, n_generated_dataset, cond_gen):
     # print("training....")
     model_trial = model(**params)
