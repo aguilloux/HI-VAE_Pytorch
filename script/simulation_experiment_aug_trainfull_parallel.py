@@ -144,7 +144,7 @@ def run(MC_id):
     
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 11
-    treat_effects = np.array([0.2, 0.6]) # np.arange(0., 1.1, 0.2) np.array([0.0, 0.4]) np.array([0.8, 1.0])
+    treat_effects = np.array([0.8, 1.0]) # np.array([0.2, 0.6]) # np.arange(0., 1.1, 0.2) np.array([0.0, 0.4]) np.array([0.8, 1.0])
     list_n_samples_control = [(1/3), (2/3), 1.0]
     n_generated_dataset = 200
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance',
@@ -380,7 +380,7 @@ def run(MC_id):
 
     MC_init = MC_id * n_MC_exp + 1
     MC_final = (MC_id + 1) * n_MC_exp
-    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_2_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
+    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_3_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
    
 
 if __name__ == "__main__":
