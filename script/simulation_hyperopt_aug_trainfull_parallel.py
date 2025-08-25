@@ -38,7 +38,8 @@ def run(generator_name):
     data_types_create = True
 
     list_n_samples_control = [(1/3), (2/3), 1.0]
-    treatment_effect = 0.0 # Treatment effect on the treated group for hyperopt
+    # treatment_effect = 0.0 # Treatment effect on the treated group for hyperopt
+    treatment_effect = 0.6 # Test
 
     current_path = os.getcwd()  # Get current working directory
     parent_path = os.path.dirname(current_path)
@@ -168,8 +169,8 @@ def run(generator_name):
         # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
         n_trials = 150
         print("{} trials for {}...".format(n_trials, generator_name))
-        study_name = parent_path + "/dataset/" + dataset_name + "/optuna_results/optuna_study_{}_ntrials{}_{}_{}".format(name_config, n_trials, metric_optuna, generator_name)
-        best_params_file = parent_path + "/dataset/" + dataset_name + "/optuna_results/best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name)
+        study_name = parent_path + "/dataset/" + dataset_name + "/optuna_results/optuna_study_{}_ntrials{}_{}_{}_treateffect_{}".format(name_config, n_trials, metric_optuna, generator_name, treatment_effect)
+        best_params_file = parent_path + "/dataset/" + dataset_name + "/optuna_results/best_params_{}_ntrials{}_{}_{}_treateffect_{}.json".format(name_config, n_trials, metric_optuna, generator_name, treatment_effect)
         db_file = study_name + ".db"
         if os.path.exists(db_file):
             print("This optuna study ({}) already exists for {}. We will use this existing file.".format(db_file, generator_name))
