@@ -158,63 +158,127 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
 
                 scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
 
+            elif method == 'train_train_gen_full':
+                train_test_share = .8
+                n_samples = data.shape[0]
+                n_train_samples = int(train_test_share * n_samples)
+                train_index = np.random.choice(n_samples, n_train_samples, replace=False)
+
+                train_data = df.iloc[train_index]
+                full_data_loader = SurvivalAnalysisDataLoader(df, target_column = "censor", time_to_event_column = "time")
+                train_data_loader = SurvivalAnalysisDataLoader(train_data, target_column=target_column, time_to_event_column=time_to_event_column)
+                model_survae_trial = model_survae(**params)
+
+                # train on train data
+                model_survae_trial.fit(train_data_loader)
+
+                if condition is None:
+                    n_gen_sample = n_generated_sample if n_generated_sample is not None else data.shape[0]
+                    gen_data = model_survae_trial.generate(count=n_gen_sample*n_generated_dataset)
+                    clear_cache()
+                    evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                                                    X_syn=gen_data, 
+                                                    reduction='mean', # default mean
+                                                    n_histogram_bins=10, # default 10
+                                                    n_folds=1,
+                                                    metrics={'stats': ['survival_km_distance']},
+                                                    task_type='survival_analysis', 
+                                                    use_cache=True)
+                else:
+                    raise NotImplementedError("Conditioning not implemented for method=train_train_gen_full")
+                
+                scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+
+            elif method == 'train_train_gen_test':
+                train_test_share = .8
+                n_samples = data.shape[0]
+                n_train_samples = int(train_test_share * n_samples)
+                train_index = np.random.choice(n_samples, n_train_samples, replace=False)
+                test_index = [i for i in np.arange(n_samples) if i not in train_index]
+
+                train_data, test_data = df.iloc[train_index], df.iloc[test_index]
+                train_data_loader = SurvivalAnalysisDataLoader(train_data, target_column=target_column, time_to_event_column=time_to_event_column)
+                test_data_loader = SurvivalAnalysisDataLoader(test_data, target_column=target_column, time_to_event_column=time_to_event_column)
+                model_survae_trial = model_survae(**params) 
+
+                # train on train data
+                model_survae_trial.fit(train_data_loader)
+                if condition is None:
+                    n_gen_sample = n_generated_sample if n_generated_sample is not None else test_data.shape[0]
+                    gen_data = model_survae_trial.generate(count=n_gen_sample*n_generated_dataset)
+                    clear_cache()
+                    evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
+                                                    X_syn=gen_data, 
+                                                    reduction='mean', # default mean
+                                                    n_histogram_bins=10, # default 10
+                                                    n_folds=1,
+                                                    metrics={'stats': ['survival_km_distance']},
+                                                    task_type='survival_analysis', 
+                                                    use_cache=True)
+                else:
+                    raise NotImplementedError("Conditioning not implemented for method=train_train_gen_test")
+                
+                scores = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+
             else:
-                # k-fold cross-validation
-                kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
-                for train_index, test_index in kf.split(df):
-                    train_data, test_data = df.iloc[train_index], df.iloc[test_index]
-                    train_data_loader = SurvivalAnalysisDataLoader(train_data, target_column=target_column, time_to_event_column=time_to_event_column)
-                    test_data_loader = SurvivalAnalysisDataLoader(test_data, target_column=target_column, time_to_event_column=time_to_event_column)
-                    full_data_loader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
-                    model_survae_trial = model_survae(**params)
+                raise ValueError("Method not recognized. Choose among 'train_full_gen_full', 'train_train_gen_full', 'train_train_gen_test'")
+            
+                # # k-fold cross-validation
+                # kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+                # for train_index, test_index in kf.split(df):
+                #     train_data, test_data = df.iloc[train_index], df.iloc[test_index]
+                #     train_data_loader = SurvivalAnalysisDataLoader(train_data, target_column=target_column, time_to_event_column=time_to_event_column)
+                #     test_data_loader = SurvivalAnalysisDataLoader(test_data, target_column=target_column, time_to_event_column=time_to_event_column)
+                #     full_data_loader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
+                #     model_survae_trial = model_survae(**params)
                     
-                    if method == 'train_train_gen_full':
-                        # train on train data
-                        model_survae_trial.fit(train_data_loader)
-                        score_k = []
-                        for j in range(n_generated_dataset):
-                            # generate as many data as in the all dataset
-                            gen_data = model_survae_trial.generate(count=df.shape[0])
-                            df_gen_data = gen_data.dataframe()
-                            if metric == 'log_rank_test':
-                                score_kj = metrics.compute_logrank_test(df, df_gen_data)
-                            else: # 'survival_km_distance'
-                                clear_cache()
-                                evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
-                                                                X_syn=gen_data, 
-                                                                reduction='mean', # default mean
-                                                                n_histogram_bins=10, # default 10
-                                                                n_folds=1,
-                                                                metrics={'stats': ['survival_km_distance']},
-                                                                task_type='survival_analysis', 
-                                                                use_cache=True)
-                                score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
-                            score_k.append(score_kj)
-                    else:
-                        # method ='train_train_gen_test':
-                        # train on train data
-                        model_survae_trial.fit(train_data_loader)
-                        score_k = []
-                        for j in range(n_generated_dataset):
-                            # generate as many data as in the test set
-                            gen_data = model_survae_trial.generate(count=test_data.shape[0])
-                            df_gen_data = gen_data.dataframe()
-                            if metric == 'log_rank_test':
-                                score_kj = metrics.compute_logrank_test(test_data, df_gen_data)
-                            else: # 'survival_km_distance'
-                                clear_cache()
-                                evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
-                                                                X_syn=gen_data, 
-                                                                reduction='mean', # default mean
-                                                                n_histogram_bins=10, # default 10
-                                                                n_folds=1,
-                                                                metrics={'stats': ['survival_km_distance']},
-                                                                task_type='survival_analysis', 
-                                                                use_cache=True)
-                                score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
-                            score_k.append(score_kj)
+                #     if method == 'train_train_gen_full':
+                #         # train on train data
+                #         model_survae_trial.fit(train_data_loader)
+                #         score_k = []
+                #         for j in range(n_generated_dataset):
+                #             # generate as many data as in the all dataset
+                #             gen_data = model_survae_trial.generate(count=df.shape[0])
+                #             df_gen_data = gen_data.dataframe()
+                #             if metric == 'log_rank_test':
+                #                 score_kj = metrics.compute_logrank_test(df, df_gen_data)
+                #             else: # 'survival_km_distance'
+                #                 clear_cache()
+                #                 evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
+                #                                                 X_syn=gen_data, 
+                #                                                 reduction='mean', # default mean
+                #                                                 n_histogram_bins=10, # default 10
+                #                                                 n_folds=1,
+                #                                                 metrics={'stats': ['survival_km_distance']},
+                #                                                 task_type='survival_analysis', 
+                #                                                 use_cache=True)
+                #                 score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+                #             score_k.append(score_kj)
+                #     else:
+                #         # method ='train_train_gen_test':
+                #         # train on train data
+                #         model_survae_trial.fit(train_data_loader)
+                #         score_k = []
+                #         for j in range(n_generated_dataset):
+                #             # generate as many data as in the test set
+                #             gen_data = model_survae_trial.generate(count=test_data.shape[0])
+                #             df_gen_data = gen_data.dataframe()
+                #             if metric == 'log_rank_test':
+                #                 score_kj = metrics.compute_logrank_test(test_data, df_gen_data)
+                #             else: # 'survival_km_distance'
+                #                 clear_cache()
+                #                 evaluation = Metrics().evaluate(X_gt=test_data_loader, # can be dataloaders or dataframes
+                #                                                 X_syn=gen_data, 
+                #                                                 reduction='mean', # default mean
+                #                                                 n_histogram_bins=10, # default 10
+                #                                                 n_folds=1,
+                #                                                 metrics={'stats': ['survival_km_distance']},
+                #                                                 task_type='survival_analysis', 
+                #                                                 use_cache=True)
+                #                 score_kj = evaluation.T[["stats.survival_km_distance.abs_optimism"]].T["mean"].values[0]
+                #             score_k.append(score_kj)
                         
-                    scores.append(np.mean(score_k))
+                #     scores.append(np.mean(score_k))
             print(f"Score: {np.mean(scores)}")
         except Exception as e:  # invalid set of params
             print(f"{type(e).__name__}: {e}")

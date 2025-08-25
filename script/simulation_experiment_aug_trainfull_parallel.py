@@ -101,7 +101,7 @@ def run(MC_id):
     independent = True
     data_types_create = True
 
-    treatment_effect_hyperopt = 0.0 # 0.0
+    treatment_effect_hyperopt = 0.6 # 0.0
 
     metric_optuna = "survival_km_distance"
     dataset_name = "Simulations_aug_indep_trainfull"
@@ -144,7 +144,7 @@ def run(MC_id):
     
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 11
-    treat_effects = np.array([0.8, 1.0]) # np.array([0.2, 0.6]) # np.arange(0., 1.1, 0.2) np.array([0.0, 0.4]) np.array([0.8, 1.0])
+    treat_effects = np.array([0.6]) # np.array([0.8, 1.0]) # np.array([0.2, 0.6]) # np.arange(0., 1.1, 0.2) np.array([0.0, 0.4]) np.array([0.8, 1.0])
     list_n_samples_control = [(1/3), (2/3), 1.0]
     n_generated_dataset = 200
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance',
@@ -183,7 +183,7 @@ def run(MC_id):
         n_trials = 150
         for generator_name in generators_sel:
             # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
-            best_params_file = os.path.join(base_path, "optuna_results", "best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name))
+            best_params_file = os.path.join(base_path, "optuna_results", "best_params_{}_ntrials{}_{}_{}_treateffect_{}.json".format(name_config, n_trials, metric_optuna, generator_name, treatment_effect_hyperopt))
             with open(best_params_file, "r") as f:
                 best_params_dict[generator_name] = json.load(f)
 
@@ -380,7 +380,7 @@ def run(MC_id):
 
     MC_init = MC_id * n_MC_exp + 1
     MC_final = (MC_id + 1) * n_MC_exp
-    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_3_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
+    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_treateffect_{treatment_effect_hyperopt}_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
    
 
 if __name__ == "__main__":
