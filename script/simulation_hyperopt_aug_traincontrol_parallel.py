@@ -36,8 +36,8 @@ def run(generator_name):
     independent = True
     data_types_create = True
 
-    # list_n_samples_control = [(1/3), (2/3), 1.0]
-    list_n_samples_control = [1.0]
+    list_n_samples_control = [(1/3), (2/3), 1.0]
+    # list_n_samples_control = [1.0]
     treatment_effect = 0.0 # Treatment effect on the treated group for hyperopt
 
     current_path = os.getcwd()  # Get current working directory
@@ -46,9 +46,9 @@ def run(generator_name):
         os.makedirs(parent_path + "/dataset/")
 
     # Save the data
-    # dataset_name = "Simulations_aug_indep_traincontrol"
+    dataset_name = "Simulations_aug_indep_traincontrol"
     # dataset_name = "Simulations_indep_traincontrol_methodhyperopt_2"
-    dataset_name = "Simulations_indep_traincontrol_methodhyperopt_3"
+    # dataset_name = "Simulations_indep_traincontrol_methodhyperopt_3"
     if not os.path.exists(parent_path + "/dataset/" + dataset_name):
         os.makedirs(parent_path + "/dataset/" + dataset_name)
 
@@ -126,8 +126,8 @@ def run(generator_name):
        
         # Parameters of the optuna study
         metric_optuna = "survival_km_distance" # metric to optimize in optuna
-        # method_hyperopt = "train_full_gen_full"
-        method_hyperopt = "train_train_gen_test" # "train_train_gen_full"
+        method_hyperopt = "train_full_gen_full"
+        # method_hyperopt = "train_train_gen_test" # "train_train_gen_full"
         n_splits = 5 # number of splits for cross-validation
         n_generated_dataset = 200 # number of generated datasets per fold to compute the metric
         name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, (d+1), n_features_bytype, int(treatment_effect))
@@ -147,8 +147,8 @@ def run(generator_name):
         best_params_dict, study_dict = {}, {}
         n_trials = 150
         print("{} trials for {}...".format(n_trials, generator_name))
-        study_name = parent_path + "/dataset/" + dataset_name + "/optuna_results/optuna_study_{}_ntrials{}_{}_{}".format(name_config, n_trials, metric_optuna, generator_name)
-        best_params_file = parent_path + "/dataset/" + dataset_name + "/optuna_results/best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name)
+        study_name = parent_path + "/dataset/" + dataset_name + "/optuna_results/optuna_study_{}_ntrials{}_{}_{}_v2".format(name_config, n_trials, metric_optuna, generator_name)
+        best_params_file = parent_path + "/dataset/" + dataset_name + "/optuna_results/best_params_{}_ntrials{}_{}_{}_v2.json".format(name_config, n_trials, metric_optuna, generator_name)
         db_file = study_name + ".db"
         if os.path.exists(db_file):
             print("This optuna study ({}) already exists for {}. We will use this existing file.".format(db_file, generator_name))
@@ -225,6 +225,7 @@ def setup_unique_working_dir(base_dir="experiments"):
 
 if __name__ == "__main__":
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
-    generators_sel = ["HI-VAE_weibull", "Surv-VAE", "HI-VAE_weibull_prior"]
+    # generators_sel = ["HI-VAE_weibull", "Surv-VAE", "HI-VAE_weibull_prior"]
+    generators_sel = ["Surv-VAE"]
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])
