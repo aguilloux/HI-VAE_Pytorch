@@ -101,8 +101,6 @@ def run(MC_id):
     independent = True
     data_types_create = True
 
-    treatment_effect_hyperopt = 0.6 # 0.0
-
     metric_optuna = "survival_km_distance"
     dataset_name = "Simulations_aug_indep_trainfull"
     current_path = os.getcwd()  # Get current working directory
@@ -113,7 +111,7 @@ def run(MC_id):
         "n_samples": n_samples,
         "n_features_bytype": n_features_bytype,
         "n_active_features": n_active_features,
-        "treatment_effect": treatment_effect_hyperopt,
+        # "treatment_effect": treatment_effect_hyperopt,
         "p_treated": p_treated,
         "shape_T": shape_T,
         "shape_C": shape_C,
@@ -133,7 +131,7 @@ def run(MC_id):
     # miss_file = os.path.join(base_path, "Missing.csv")
     # true_miss_file = None
 
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"] #, "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
@@ -144,60 +142,64 @@ def run(MC_id):
     
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 11
-    treat_effects = np.array([0.6]) # np.array([0.8, 1.0]) # np.array([0.2, 0.6]) # np.arange(0., 1.1, 0.2) np.array([0.0, 0.4]) np.array([0.8, 1.0])
+    treat_effects = np.array([0.2, 0.4, 0.6, 0.8, 1.0]) # np.array([0.8, 1.0]) # np.array([0.2, 0.6]) # np.arange(0., 1.1, 0.2) np.array([0.0, 0.4]) np.array([0.8, 1.0])
     list_n_samples_control = [(1/3), (2/3), 1.0]
     n_generated_dataset = 200
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance',
                                 'Detection XGB', 'NNDR', 'K-map score']
 
-    # Initialize storage for metrics and results
-    synthcity_metrics_res_dict = {generator_name: pd.DataFrame() for generator_name in generators_sel}
-    log_p_value_gen_dict = {generator_name: [] for generator_name in generators_sel}
-    log_p_value_control_dict = {generator_name: [] for generator_name in generators_sel}
-    est_cox_coef_gen_dict = {generator_name: [] for generator_name in generators_sel}
-    est_cox_coef_se_gen_dict = {generator_name: [] for generator_name in generators_sel}
-    
-    # Initialize result variables for MC experiment
-    simu_num = []
-    D_control = []
-    D_treated = []
-    coef_init_univ_list = []
-    H0_coef = []
-    aug_percs = []
-    log_p_value_init = []
-    est_cox_coef_init = []
-    est_cox_coef_se_init = []
 
     print("Run Monte Carlo experiments {} to {}...".format(MC_id * n_MC_exp + 1, (MC_id + 1) * n_MC_exp))
     dataset_name_MC = dataset_name + "/MC_{}to{}".format(MC_id * n_MC_exp + 1, (MC_id + 1) * n_MC_exp) 
     if not os.path.exists(parent_path + "/dataset/" + dataset_name_MC):
         os.makedirs(parent_path + "/dataset/" + dataset_name_MC)
 
-    for d, perc_control in enumerate(list_n_samples_control):
 
-        print("Control group percentage:", perc_control)
+    for t, treatment_effect in enumerate(treat_effects):
+        print("Treatment effect on treated group:", treatment_effect)
 
-        # BEST PARAMETERS
-        best_params_dict = {}
-        name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, (d+1), n_features_bytype, int(treatment_effect_hyperopt))
-        n_trials = 150
-        for generator_name in generators_sel:
-            # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
-            best_params_file = os.path.join(base_path, "optuna_results", "best_params_{}_ntrials{}_{}_{}_treateffect_{}.json".format(name_config, n_trials, metric_optuna, generator_name, treatment_effect_hyperopt))
-            with open(best_params_file, "r") as f:
-                best_params_dict[generator_name] = json.load(f)
-
-        # Seed
-        seed = MC_id * n_MC_exp # 0, 10, 20, .. 
-
-        os.chdir(work_dir)  # Switch to private work dir
+        # Initialize storage for metrics and results
+        synthcity_metrics_res_dict = {generator_name: pd.DataFrame() for generator_name in generators_sel}
+        log_p_value_gen_dict = {generator_name: [] for generator_name in generators_sel}
+        log_p_value_control_dict = {generator_name: [] for generator_name in generators_sel}
+        est_cox_coef_gen_dict = {generator_name: [] for generator_name in generators_sel}
+        est_cox_coef_se_gen_dict = {generator_name: [] for generator_name in generators_sel}
         
-        for m in np.arange(n_MC_exp):
-            print("Monte-Carlo experiment", m + n_MC_exp * MC_id)
-            seed += 1
-            # To make sure the difference between simulated datasets, increase seed value each time
+        # Initialize result variables for MC experiment
+        simu_num = []
+        D_control = []
+        D_treated = []
+        coef_init_univ_list = []
+        H0_coef = []
+        aug_percs = []
+        log_p_value_init = []
+        est_cox_coef_init = []
+        est_cox_coef_se_init = []
 
-            for t, treatment_effect in enumerate(treat_effects):
+        for d, perc_control in enumerate(list_n_samples_control):
+            print("Control group percentage:", perc_control)
+
+            # BEST PARAMETERS
+            best_params_dict = {}
+            name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, (d+1), n_features_bytype, int(treatment_effect*10))
+            n_trials = 150
+            for generator_name in generators_sel:
+                # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
+                best_params_file = os.path.join(base_path, "optuna_results", "best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name))
+                with open(best_params_file, "r") as f:
+                    best_params_dict[generator_name] = json.load(f)
+
+            # Seed
+            seed = MC_id * n_MC_exp # 0, 10, 20, .. 
+
+            os.chdir(work_dir)  # Switch to private work dir
+            
+            for m in np.arange(n_MC_exp):
+                print("Monte-Carlo experiment", m + n_MC_exp * MC_id)
+                seed += 1
+                # To make sure the difference between simulated datasets, increase seed value each time
+
+                # for t, treatment_effect in enumerate(treat_effects):
 
                 # Simulate control group data
                 control, treated, types = simulation(treatment_effect, n_samples, independent, feature_types_list,
@@ -308,79 +310,80 @@ def run(MC_id):
                 
                     synthcity_metrics_res = general_metrics(df_init_control, list_df_gen_control, generator_name)[synthcity_metrics_sel]
                     synthcity_metrics_res_dict[generator_name] = pd.concat([synthcity_metrics_res_dict[generator_name], synthcity_metrics_res])
-                   
+                    
 
-                # Compare the performance of generation in terms of p-values between generated control and treated group
-                # for t, treatment_effect in enumerate(treat_effects):
-                p_treated_true_coef = 300 / (300 + n_samples_control)
-                coef_init_univ = true_univ_coef(treatment_effect, independent, feature_types_list,
-                                                n_features_bytype, n_active_features, p_treated_true_coef, shape_T,
-                                                shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
-
-
-                # Combine control and treated data
-                df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
-                columns = ['time', 'censor', 'treatment']
-                coef_init, _, _, se_init = fit_cox_model(df_init, columns)
-                est_cox_coef_init += [coef_init[0]] * n_generated_dataset
-                est_cox_coef_se_init += [se_init[0]] * n_generated_dataset
-
-                # Compute log-rank test p-value for initial control group vs initial treated group
-                p_value_init = compute_logrank_test(df_init_control, df_init_treated)
-                log_p_value_init += [p_value_init] * n_generated_dataset
-                H0_coef += [treatment_effect] * n_generated_dataset
-                aug_percs += [perc_control] * n_generated_dataset
-                simu_num += [(m + n_MC_exp * MC_id) * len(treat_effects) * len(list_n_samples_control) + d * len(treat_effects) + t] * n_generated_dataset
-                D_control += [control['censor'].sum() * (treated.shape[0] / control.shape[0])] * n_generated_dataset
-                D_treated += [treated['censor'].sum()] * n_generated_dataset
-                coef_init_univ_list += [coef_init_univ] * n_generated_dataset
-
-                # For each generator, compute the log-rank test p-values and Cox coefficients for generated control group vs initial treated group
-                for generator_name in generators_sel:
-                    log_p_value_gen_list = []
-                    log_p_value_control_list = []
-                    est_cox_coef_gen = []
-                    est_cox_coef_se_gen = []
-                    for i in range(n_generated_dataset):
-                        df_gen_control = df_gen_control_dict[generator_name][i]
-                        log_p_value_gen_list.append(compute_logrank_test(df_gen_control, treated))
-                        log_p_value_control_list.append(compute_logrank_test(df_gen_control, control))
-                        df_gen = pd.concat([df_gen_control, df_init_treated], ignore_index=True)
-                        coef_gen, _, _, se_gen = fit_cox_model(df_gen, columns)
-                        est_cox_coef_gen.append(coef_gen[0])
-                        est_cox_coef_se_gen.append(se_gen[0])
-
-                    log_p_value_gen_dict[generator_name] += log_p_value_gen_list
-                    log_p_value_control_dict[generator_name] += log_p_value_control_list
-                    est_cox_coef_gen_dict[generator_name] += est_cox_coef_gen
-                    est_cox_coef_se_gen_dict[generator_name] += est_cox_coef_se_gen
-
-        os.chdir(original_dir)        
+                    # Compare the performance of generation in terms of p-values between generated control and treated group
+                    # for t, treatment_effect in enumerate(treat_effects):
+                    p_treated_true_coef = 300 / (300 + n_samples_control)
+                    coef_init_univ = true_univ_coef(treatment_effect, independent, feature_types_list,
+                                                    n_features_bytype, n_active_features, p_treated_true_coef, shape_T,
+                                                    shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
 
 
-    # Save the results
-    results = pd.DataFrame({'XP_num': simu_num, 
-                            'D_control': D_control, 
-                            'D_treated': D_treated,
-                            'H0_coef_univ': coef_init_univ_list, 
-                            'H0_coef': H0_coef,
-                            'aug_perc': aug_percs,
-                            'log_pvalue_init': log_p_value_init, 
-                            'est_cox_coef_init': est_cox_coef_init,
-                            'est_cox_coef_se_init': est_cox_coef_se_init})
+                    # Combine control and treated data
+                    df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
+                    columns = ['time', 'censor', 'treatment']
+                    coef_init, _, _, se_init = fit_cox_model(df_init, columns)
+                    est_cox_coef_init += [coef_init[0]] * n_generated_dataset
+                    est_cox_coef_se_init += [se_init[0]] * n_generated_dataset
 
-    # Add metrics and coefficients for each generator
-    for generator_name in generators_sel:
-        results[f"log_pvalue_{generator_name}"] = log_p_value_gen_dict[generator_name]
-        results[f"log_pvalue_control_{generator_name}"] = log_p_value_control_dict[generator_name]
-        results[f"est_cox_coef_{generator_name}"] = est_cox_coef_gen_dict[generator_name]
-        results[f"est_cox_coef_se_{generator_name}"] = est_cox_coef_se_gen_dict[generator_name]
-        for metric in synthcity_metrics_sel:
-            results[f"{metric}_{generator_name}"] = synthcity_metrics_res_dict[generator_name][metric].values
+                    # Compute log-rank test p-value for initial control group vs initial treated group
+                    p_value_init = compute_logrank_test(df_init_control, df_init_treated)
+                    log_p_value_init += [p_value_init] * n_generated_dataset
+                    H0_coef += [treatment_effect] * n_generated_dataset
+                    aug_percs += [perc_control] * n_generated_dataset
+                    # simu_num += [(m + n_MC_exp * MC_id) * len(treat_effects) * len(list_n_samples_control) + d * len(treat_effects) + t] * n_generated_dataset
+                    simu_num += [(m + n_MC_exp * MC_id) * len(list_n_samples_control) + d + t] * n_generated_dataset
+                    D_control += [control['censor'].sum() * (treated.shape[0] / control.shape[0])] * n_generated_dataset
+                    D_treated += [treated['censor'].sum()] * n_generated_dataset
+                    coef_init_univ_list += [coef_init_univ] * n_generated_dataset
 
-    MC_init = MC_id * n_MC_exp + 1
-    MC_final = (MC_id + 1) * n_MC_exp
-    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_treateffect_{treatment_effect_hyperopt}_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
+                    # For each generator, compute the log-rank test p-values and Cox coefficients for generated control group vs initial treated group
+                    for generator_name in generators_sel:
+                        log_p_value_gen_list = []
+                        log_p_value_control_list = []
+                        est_cox_coef_gen = []
+                        est_cox_coef_se_gen = []
+                        for i in range(n_generated_dataset):
+                            df_gen_control = df_gen_control_dict[generator_name][i]
+                            log_p_value_gen_list.append(compute_logrank_test(df_gen_control, treated))
+                            log_p_value_control_list.append(compute_logrank_test(df_gen_control, control))
+                            df_gen = pd.concat([df_gen_control, df_init_treated], ignore_index=True)
+                            coef_gen, _, _, se_gen = fit_cox_model(df_gen, columns)
+                            est_cox_coef_gen.append(coef_gen[0])
+                            est_cox_coef_se_gen.append(se_gen[0])
+
+                        log_p_value_gen_dict[generator_name] += log_p_value_gen_list
+                        log_p_value_control_dict[generator_name] += log_p_value_control_list
+                        est_cox_coef_gen_dict[generator_name] += est_cox_coef_gen
+                        est_cox_coef_se_gen_dict[generator_name] += est_cox_coef_se_gen
+
+            os.chdir(original_dir)        
+
+
+        # Save the results
+        results = pd.DataFrame({'XP_num': simu_num, 
+                                'D_control': D_control, 
+                                'D_treated': D_treated,
+                                'H0_coef_univ': coef_init_univ_list, 
+                                'H0_coef': H0_coef,
+                                'aug_perc': aug_percs,
+                                'log_pvalue_init': log_p_value_init, 
+                                'est_cox_coef_init': est_cox_coef_init,
+                                'est_cox_coef_se_init': est_cox_coef_se_init})
+
+        # Add metrics and coefficients for each generator
+        for generator_name in generators_sel:
+            results[f"log_pvalue_{generator_name}"] = log_p_value_gen_dict[generator_name]
+            results[f"log_pvalue_control_{generator_name}"] = log_p_value_control_dict[generator_name]
+            results[f"est_cox_coef_{generator_name}"] = est_cox_coef_gen_dict[generator_name]
+            results[f"est_cox_coef_se_{generator_name}"] = est_cox_coef_se_gen_dict[generator_name]
+            for metric in synthcity_metrics_sel:
+                results[f"{metric}_{generator_name}"] = synthcity_metrics_res_dict[generator_name][metric].values
+
+        MC_init = MC_id * n_MC_exp + 1
+        MC_final = (MC_id + 1) * n_MC_exp
+        results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_treateffect_{treatment_effect}_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
    
 
 if __name__ == "__main__":

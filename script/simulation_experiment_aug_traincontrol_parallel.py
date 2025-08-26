@@ -96,13 +96,15 @@ def run(MC_id):
     scale_C = 2.5
     scale_C_indep = 3.9
     feature_types_list = ["real", "cat"]
-    independent = True
+    # independent = True
+    independent = False
     data_types_create = True
 
     treatment_effect_hyperopt = 0.0 # 0.0
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_aug_indep_traincontrol"
+    # dataset_name = "Simulations_aug_indep_traincontrol"
+    dataset_name = "Simulations_aug_dep_traincontrol"
     current_path = os.getcwd()  # Get current working directory
     parent_path = os.path.dirname(current_path)
     base_path = prepare_dataset_dirs(parent_path, dataset_name)
@@ -131,8 +133,7 @@ def run(MC_id):
     # miss_file = os.path.join(base_path, "Missing.csv")
     # true_miss_file = None
 
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
-    generators_sel = ["HI-VAE_weibull"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
@@ -142,7 +143,7 @@ def run(MC_id):
                        "HI-VAE_piecewise_prior" : surv_hivae}
     
     # MONTE-CARLO EXPERIMENT
-    n_MC_exp = 150
+    n_MC_exp = 10
     treat_effects = np.arange(0., 1.1, 0.2)
     list_n_samples_control = [(1/3), (2/3), 1.0]
     n_generated_dataset = 200
@@ -179,7 +180,7 @@ def run(MC_id):
         # BEST PARAMETERS
         best_params_dict = {}
         name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, (d+1), n_features_bytype, int(treatment_effect_hyperopt))
-        n_trials = 10
+        n_trials = 150
         for generator_name in generators_sel:
             # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
             best_params_file = os.path.join(base_path, "optuna_results", "best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name))
@@ -195,7 +196,6 @@ def run(MC_id):
             print("Monte-Carlo experiment", m + n_MC_exp * MC_id)
             seed += 1
             # To make sure the difference between simulated datasets, increase seed value each time
-
         
             # Simulate control group data
             control, treated, types = simulation(treatment_effect_hyperopt, n_samples, independent, feature_types_list,
