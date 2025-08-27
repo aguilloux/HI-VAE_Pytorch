@@ -39,7 +39,7 @@ def run(generator_name):
 
     list_n_samples_control = [(1/3), (2/3), 1.0]
     # treatment_effect = 0.0 # Treatment effect on the treated group for hyperopt
-    treat_effects = np.array([0.2, 0.4, 0.6]) # np.array([0.8, 1.0]) # To run in parallel on the cluster
+    treat_effects = np.array([0.8, 1.0]) # np.array([0.2, 0.4, 0.6]) # To run in parallel on the cluster
 
     current_path = os.getcwd()  # Get current working directory
     parent_path = os.path.dirname(current_path)
