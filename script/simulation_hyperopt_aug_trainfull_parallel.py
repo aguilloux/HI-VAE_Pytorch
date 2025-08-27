@@ -56,7 +56,7 @@ def run(generator_name):
         f.write(f"n_samples = {n_samples}\n")
         f.write(f"n_features_bytype = {n_features_bytype}\n")
         f.write(f"n_active_features = {n_active_features}\n")
-        f.write(f"treatment_effect = {treatment_effect}\n")
+        # f.write(f"treatment_effect = {treatment_effect}\n")
         f.write(f"p_treated = {p_treated}\n")
         f.write(f"shape_T = {shape_T}\n")
         f.write(f"shape_C = {shape_C}\n")
