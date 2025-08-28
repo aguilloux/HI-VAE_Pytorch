@@ -16,6 +16,32 @@ import os
 import random
 import torch
 
+import multiprocessing as mp
+mp.set_start_method("spawn", force=True)
+
+def run_worker(return_dict, model, params, data, count):
+    # print("training....")
+    model_trial = model(**params)
+    model_trial.fit(data)
+    # print("generation....")
+    result = model_trial.generate(count=count)
+    return_dict["result"] = result
+
+def run_with_timeout_mp(model, params, data, count, timeout=60):
+    manager = mp.Manager()
+    return_dict = manager.dict()
+    p = mp.Process(target=run_worker, args=(return_dict, model, params, data, count))
+    p.start()
+    p.join(timeout)
+
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        print(f"Generation timed out after {timeout} seconds.")
+        raise optuna.TrialPruned()
+    
+    return return_dict["result"]
+
 def set_seed(seed=1):
     random.seed(seed)                            # Python built-in
     np.random.seed(seed)                         # NumPy
@@ -114,14 +140,18 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         try:
             if method == 'train_full_gen_full':
                 full_data_loader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
-                model_survae_trial = model_survae(**params)
-                # train on full data
-                model_survae_trial.fit(full_data_loader)
+                # model_survae_trial = model_survae(**params)
+                # # train on full data
+                # model_survae_trial.fit(full_data_loader)
             
                 if condition is None:
                     n_gen_sample = n_generated_sample if n_generated_sample is not None else data.shape[0]
-                    gen_data = model_survae_trial.generate(count=n_gen_sample*n_generated_dataset)
-                    clear_cache()
+                    
+                    # gen_data = model_survae_trial.generate(count=n_gen_sample*n_generated_dataset)
+                    # clear_cache()
+
+                    gen_data = run_with_timeout_mp(model_survae, params, full_data_loader, n_gen_sample*n_generated_dataset, timeout=120)
+                   
                     evaluation = Metrics().evaluate(X_gt=full_data_loader, # can be dataloaders or dataframes
                                                     X_syn=gen_data, 
                                                     reduction='mean', # default mean
@@ -135,7 +165,8 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
                     gen_shape = 0
                     i = 0
                     while gen_shape < condition['n_samples']*n_generated_dataset:
-                        out = model_survae_trial.generate(count=df.shape[0]*n_generated_dataset)
+                        # out = model_survae_trial.generate(count=df.shape[0]*n_generated_dataset)
+                        out = run_with_timeout_mp(model_survae, params, full_data_loader, df.shape[0]*n_generated_dataset, timeout=120)  
                         out_df = out.dataframe()
                         out_df = out_df[out_df[condition['var']] == condition['value']]
                         if i == 0:
