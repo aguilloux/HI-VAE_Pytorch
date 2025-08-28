@@ -312,51 +312,51 @@ def run(MC_id):
                     synthcity_metrics_res_dict[generator_name] = pd.concat([synthcity_metrics_res_dict[generator_name], synthcity_metrics_res])
                     
 
-                    # Compare the performance of generation in terms of p-values between generated control and treated group
-                    # for t, treatment_effect in enumerate(treat_effects):
-                    p_treated_true_coef = 300 / (300 + n_samples_control)
-                    coef_init_univ = true_univ_coef(treatment_effect, independent, feature_types_list,
-                                                    n_features_bytype, n_active_features, p_treated_true_coef, shape_T,
-                                                    shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
+                # Compare the performance of generation in terms of p-values between generated control and treated group
+                # for t, treatment_effect in enumerate(treat_effects):
+                p_treated_true_coef = 300 / (300 + n_samples_control)
+                coef_init_univ = true_univ_coef(treatment_effect, independent, feature_types_list,
+                                                n_features_bytype, n_active_features, p_treated_true_coef, shape_T,
+                                                shape_C, scale_C, scale_C_indep, data_types_create, seed=seed)
 
 
-                    # Combine control and treated data
-                    df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
-                    columns = ['time', 'censor', 'treatment']
-                    coef_init, _, _, se_init = fit_cox_model(df_init, columns)
-                    est_cox_coef_init += [coef_init[0]] * n_generated_dataset
-                    est_cox_coef_se_init += [se_init[0]] * n_generated_dataset
+                # Combine control and treated data
+                df_init = pd.concat([df_init_control, df_init_treated], ignore_index=True)
+                columns = ['time', 'censor', 'treatment']
+                coef_init, _, _, se_init = fit_cox_model(df_init, columns)
+                est_cox_coef_init += [coef_init[0]] * n_generated_dataset
+                est_cox_coef_se_init += [se_init[0]] * n_generated_dataset
 
-                    # Compute log-rank test p-value for initial control group vs initial treated group
-                    p_value_init = compute_logrank_test(df_init_control, df_init_treated)
-                    log_p_value_init += [p_value_init] * n_generated_dataset
-                    H0_coef += [treatment_effect] * n_generated_dataset
-                    aug_percs += [perc_control] * n_generated_dataset
-                    # simu_num += [(m + n_MC_exp * MC_id) * len(treat_effects) * len(list_n_samples_control) + d * len(treat_effects) + t] * n_generated_dataset
-                    simu_num += [(m + n_MC_exp * MC_id) * len(list_n_samples_control) + d + t] * n_generated_dataset
-                    D_control += [control['censor'].sum() * (treated.shape[0] / control.shape[0])] * n_generated_dataset
-                    D_treated += [treated['censor'].sum()] * n_generated_dataset
-                    coef_init_univ_list += [coef_init_univ] * n_generated_dataset
+                # Compute log-rank test p-value for initial control group vs initial treated group
+                p_value_init = compute_logrank_test(df_init_control, df_init_treated)
+                log_p_value_init += [p_value_init] * n_generated_dataset
+                H0_coef += [treatment_effect] * n_generated_dataset
+                aug_percs += [perc_control] * n_generated_dataset
+                # simu_num += [(m + n_MC_exp * MC_id) * len(treat_effects) * len(list_n_samples_control) + d * len(treat_effects) + t] * n_generated_dataset
+                simu_num += [(m + n_MC_exp * MC_id) * len(list_n_samples_control) + d + t] * n_generated_dataset
+                D_control += [control['censor'].sum() * (treated.shape[0] / control.shape[0])] * n_generated_dataset
+                D_treated += [treated['censor'].sum()] * n_generated_dataset
+                coef_init_univ_list += [coef_init_univ] * n_generated_dataset
 
-                    # For each generator, compute the log-rank test p-values and Cox coefficients for generated control group vs initial treated group
-                    for generator_name in generators_sel:
-                        log_p_value_gen_list = []
-                        log_p_value_control_list = []
-                        est_cox_coef_gen = []
-                        est_cox_coef_se_gen = []
-                        for i in range(n_generated_dataset):
-                            df_gen_control = df_gen_control_dict[generator_name][i]
-                            log_p_value_gen_list.append(compute_logrank_test(df_gen_control, treated))
-                            log_p_value_control_list.append(compute_logrank_test(df_gen_control, control))
-                            df_gen = pd.concat([df_gen_control, df_init_treated], ignore_index=True)
-                            coef_gen, _, _, se_gen = fit_cox_model(df_gen, columns)
-                            est_cox_coef_gen.append(coef_gen[0])
-                            est_cox_coef_se_gen.append(se_gen[0])
+                # For each generator, compute the log-rank test p-values and Cox coefficients for generated control group vs initial treated group
+                for generator_name in generators_sel:
+                    log_p_value_gen_list = []
+                    log_p_value_control_list = []
+                    est_cox_coef_gen = []
+                    est_cox_coef_se_gen = []
+                    for i in range(n_generated_dataset):
+                        df_gen_control = df_gen_control_dict[generator_name][i]
+                        log_p_value_gen_list.append(compute_logrank_test(df_gen_control, treated))
+                        log_p_value_control_list.append(compute_logrank_test(df_gen_control, control))
+                        df_gen = pd.concat([df_gen_control, df_init_treated], ignore_index=True)
+                        coef_gen, _, _, se_gen = fit_cox_model(df_gen, columns)
+                        est_cox_coef_gen.append(coef_gen[0])
+                        est_cox_coef_se_gen.append(se_gen[0])
 
-                        log_p_value_gen_dict[generator_name] += log_p_value_gen_list
-                        log_p_value_control_dict[generator_name] += log_p_value_control_list
-                        est_cox_coef_gen_dict[generator_name] += est_cox_coef_gen
-                        est_cox_coef_se_gen_dict[generator_name] += est_cox_coef_se_gen
+                    log_p_value_gen_dict[generator_name] += log_p_value_gen_list
+                    log_p_value_control_dict[generator_name] += log_p_value_control_list
+                    est_cox_coef_gen_dict[generator_name] += est_cox_coef_gen
+                    est_cox_coef_se_gen_dict[generator_name] += est_cox_coef_se_gen
 
             os.chdir(original_dir)        
 
