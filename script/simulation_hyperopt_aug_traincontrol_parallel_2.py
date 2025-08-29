@@ -37,8 +37,8 @@ def run(generator_name):
     data_types_create = True
     seed_optuna = 12 # 10
 
-    list_n_samples_control = [(1/3), (2/3), 1.0]
-    # list_n_samples_control = [1.0]
+    # list_n_samples_control = [(1/3), (2/3), 1.0]
+    list_n_samples_control = [1.0]
     treatment_effect = 0.0 # Treatment effect on the treated group for hyperopt
 
     current_path = os.getcwd()  # Get current working directory
@@ -48,8 +48,6 @@ def run(generator_name):
 
     # Save the data
     dataset_name = "Simulations_aug_indep_traincontrol"
-    # dataset_name = "Simulations_indep_traincontrol_methodhyperopt_2"
-    # dataset_name = "Simulations_indep_traincontrol_methodhyperopt_3"
     if not os.path.exists(parent_path + "/dataset/" + dataset_name):
         os.makedirs(parent_path + "/dataset/" + dataset_name)
 
@@ -131,7 +129,7 @@ def run(generator_name):
         # method_hyperopt = "train_train_gen_test" # "train_train_gen_full"
         n_splits = 5 # number of splits for cross-validation
         n_generated_dataset = 200 # number of generated datasets per fold to compute the metric
-        name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, (d+1), n_features_bytype, int(treatment_effect))
+        name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, int(perc_control*3+0.01), n_features_bytype, int(treatment_effect))
 
         generators_dict = {"HI-VAE_weibull" : surv_hivae,
                         "HI-VAE_piecewise" : surv_hivae,
@@ -230,6 +228,7 @@ if __name__ == "__main__":
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     # generators_sel = ["HI-VAE_weibull", "Surv-VAE", "HI-VAE_weibull_prior"]
     # generators_sel = ["Surv-VAE"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE"]
+    generators_sel = ["HI-VAE_piecewise", "Surv-VAE"]
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])

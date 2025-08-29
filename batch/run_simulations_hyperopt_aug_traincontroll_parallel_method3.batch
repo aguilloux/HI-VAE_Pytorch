@@ -23,4 +23,4 @@ source activate hivae
 GENERATOR_ID=${SLURM_ARRAY_TASK_ID}
 
 cd ../script
-python3 simulation_hyperopt_aug_traincontrol_parallel_2.py $GENERATOR_ID 
+python3 simulation_hyperopt_aug_traincontrol_parallel_method3.py $GENERATOR_ID 

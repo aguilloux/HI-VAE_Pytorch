@@ -103,9 +103,8 @@ def run(MC_id):
     treatment_effect_hyperopt = 0.0 # 0.0
 
     metric_optuna = "survival_km_distance"
-    # dataset_name = "Simulations_aug_indep_traincontrol"
+    dataset_name = "Simulations_aug_indep_traincontrol"
     # dataset_name = "Simulations_aug_dep_traincontrol"
-    dataset_name = "Simulations_indep_traincontrol_methodhyperopt_2"
     current_path = os.getcwd()  # Get current working directory
     parent_path = os.path.dirname(current_path)
     base_path = prepare_dataset_dirs(parent_path, dataset_name)
@@ -134,9 +133,8 @@ def run(MC_id):
     # miss_file = os.path.join(base_path, "Missing.csv")
     # true_miss_file = None
 
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
     # generators_sel = ["Surv-VAE"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_weibull_prior", "Surv-VAE"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
@@ -148,8 +146,7 @@ def run(MC_id):
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 10
     treat_effects = np.arange(0., 1.1, 0.2)
-    # list_n_samples_control = [(1/3), (2/3), 1.0]
-    list_n_samples_control = [1.0]
+    list_n_samples_control = [(1/3), (2/3), 1.0]
     n_generated_dataset = 200
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance',
                                 'Detection XGB', 'NNDR', 'K-map score']
@@ -187,7 +184,7 @@ def run(MC_id):
         n_trials = 150
         for generator_name in generators_sel:
             # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
-            best_params_file = os.path.join(base_path, "optuna_results", "best_params_{}_ntrials{}_{}_{}_v4.json".format(name_config, n_trials, metric_optuna, generator_name))
+            best_params_file = os.path.join(base_path, "optuna_results", "best_params_{}_ntrials{}_{}_{}.json".format(name_config, n_trials, metric_optuna, generator_name))
             with open(best_params_file, "r") as f:
                 best_params_dict[generator_name] = json.load(f)
 

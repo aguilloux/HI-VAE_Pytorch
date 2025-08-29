@@ -35,7 +35,7 @@ def run(generator_name):
     feature_types_list = ["real", "cat"]
     independent = True
     data_types_create = True
-    seed_optuna = 11 # 10
+    seed_optuna = 10 # 10
 
     # list_n_samples_control = [(1/3), (2/3), 1.0]
     list_n_samples_control = [1.0]
@@ -125,8 +125,8 @@ def run(generator_name):
        
         # Parameters of the optuna study
         metric_optuna = "survival_km_distance" # metric to optimize in optuna
-        method_hyperopt = "train_full_gen_full"
-        # method_hyperopt = "train_train_gen_test" # "train_train_gen_full"
+        # method_hyperopt = "train_full_gen_full"
+        method_hyperopt = "train_train_gen_test" # "train_train_gen_full"
         n_splits = 5 # number of splits for cross-validation
         n_generated_dataset = 200 # number of generated datasets per fold to compute the metric
         name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, int(perc_control*3+0.01), n_features_bytype, int(treatment_effect))
@@ -146,8 +146,8 @@ def run(generator_name):
         best_params_dict, study_dict = {}, {}
         n_trials = 150
         print("{} trials for {}...".format(n_trials, generator_name))
-        study_name = parent_path + "/dataset/" + dataset_name + "/optuna_results/optuna_study_{}_ntrials{}_{}_{}_seed{}".format(name_config, n_trials, metric_optuna, generator_name, seed_optuna)
-        best_params_file = parent_path + "/dataset/" + dataset_name + "/optuna_results/best_params_{}_ntrials{}_{}_{}_seed{}.json".format(name_config, n_trials, metric_optuna, generator_name, seed_optuna)
+        study_name = parent_path + "/dataset/" + dataset_name + "/optuna_results/optuna_study_{}_ntrials{}_{}_{}_method2".format(name_config, n_trials, metric_optuna, generator_name)
+        best_params_file = parent_path + "/dataset/" + dataset_name + "/optuna_results/best_params_{}_ntrials{}_{}_{}_method2.json".format(name_config, n_trials, metric_optuna, generator_name)
         db_file = study_name + ".db"
         if os.path.exists(db_file):
             print("This optuna study ({}) already exists for {}. We will use this existing file.".format(db_file, generator_name))
