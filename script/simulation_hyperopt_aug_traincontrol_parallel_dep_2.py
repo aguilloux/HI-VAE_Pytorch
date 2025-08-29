@@ -36,7 +36,7 @@ def run(generator_name):
     # independent = True
     independent = False
     data_types_create = True
-    seed_optuna = 11 # 10
+    seed_optuna = 12 # 10
 
     list_n_samples_control = [(1/3), (2/3), 1.0]
     treatment_effect = 0.0 # Treatment effect on the treated group for hyperopt

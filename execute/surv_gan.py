@@ -109,7 +109,7 @@ def run(data, columns, target_column, time_to_event_column, n_generated_dataset,
         return est_data_gen_transformed_survgan
 
 
-def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, n_generated_sample=None, cond_gen=None, study_name='optuna_study_surv_gan', metric='survival_km_distance', method='', cond_df=None):
+def optuna_hyperparameter_search(data, columns, target_column, time_to_event_column, n_generated_dataset, n_splits, n_trials, n_generated_sample=None, cond_gen=None, study_name='optuna_study_surv_gan', metric='survival_km_distance', method='', cond_df=None, seed=10):
     
     df = pd.DataFrame(data.numpy(), columns=columns) # Preprocessed dataset
     dataloader = SurvivalAnalysisDataLoader(df, target_column=target_column, time_to_event_column=time_to_event_column)
@@ -228,7 +228,7 @@ def optuna_hyperparameter_search(data, columns, target_column, time_to_event_col
         print("This optuna study ({}) already exists. We load the study from the existing file.".format(db_file))
         study = optuna.load_study(study_name=study_name, storage='sqlite:///'+study_name+'.db')
     else: 
-        sampler = optuna.samplers.TPESampler(seed=10)
+        sampler = optuna.samplers.TPESampler(seed=seed)
         study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db', sampler=sampler)
         default_params = {'generator_n_layers_hidden': 2, 
                           'generator_n_units_hidden': 500, 

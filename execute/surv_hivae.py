@@ -461,7 +461,7 @@ def get_batchsize(n_samples, n_splits):
 
     return batch_size
 
-def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, n_generated_sample = None, study_name='optuna_study_surv_hivae', metric='survival_km_distance', method='', gen_from_prior=False, condition=None, cond_df=None, batchcorrect=False):
+def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict, n_generated_dataset, n_splits, n_trials, columns, generator_name, epochs = 1000, n_generated_sample = None, study_name='optuna_study_surv_hivae', metric='survival_km_distance', method='', gen_from_prior=False, condition=None, cond_df=None, batchcorrect=False, seed=10):
    
     model_name = "HIVAE_inputDropout" # "HIVAE_factorized"
     miss_mask = miss_mask
@@ -758,7 +758,7 @@ def optuna_hyperparameter_search(df, miss_mask, true_miss_mask, feat_types_dict,
         print("This optuna study ({}) already exists. We load the study from the existing file.".format(db_file))
         study = optuna.load_study(study_name=study_name, storage='sqlite:///'+study_name+'.db')
     else: 
-        sampler = optuna.samplers.TPESampler(seed=10)
+        sampler = optuna.samplers.TPESampler(seed=seed)
         study = optuna.create_study(direction="minimize", study_name=study_name, storage='sqlite:///'+study_name+'.db', sampler=sampler)
         if "HI-VAE_piecewise" in generator_name:
             default_params = {"lr": 1e-3, "batch_size": 100, "z_dim": 20, "y_dim": 15, "s_dim": 20, "n_layers_surv_piecewise": 1, "n_intervals": 10}

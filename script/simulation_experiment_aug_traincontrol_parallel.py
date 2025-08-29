@@ -103,8 +103,9 @@ def run(MC_id):
     treatment_effect_hyperopt = 0.0 # 0.0
 
     metric_optuna = "survival_km_distance"
-    dataset_name = "Simulations_aug_indep_traincontrol"
+    # dataset_name = "Simulations_aug_indep_traincontrol"
     # dataset_name = "Simulations_aug_dep_traincontrol"
+    dataset_name = "Simulations_indep_traincontrol_methodhyperopt_2"
     current_path = os.getcwd()  # Get current working directory
     parent_path = os.path.dirname(current_path)
     base_path = prepare_dataset_dirs(parent_path, dataset_name)
@@ -134,7 +135,8 @@ def run(MC_id):
     # true_miss_file = None
 
     # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
-    generators_sel = ["Surv-VAE"]
+    # generators_sel = ["Surv-VAE"]
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_weibull_prior", "Surv-VAE"]
     generators_dict = {"HI-VAE_weibull" : surv_hivae,
                        "HI-VAE_piecewise" : surv_hivae,
                        "HI-VAE_lognormal" : surv_hivae,
@@ -146,7 +148,8 @@ def run(MC_id):
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 10
     treat_effects = np.arange(0., 1.1, 0.2)
-    list_n_samples_control = [(1/3), (2/3), 1.0]
+    # list_n_samples_control = [(1/3), (2/3), 1.0]
+    list_n_samples_control = [1.0]
     n_generated_dataset = 200
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance',
                                 'Detection XGB', 'NNDR', 'K-map score']
@@ -180,7 +183,7 @@ def run(MC_id):
 
         # BEST PARAMETERS
         best_params_dict = {}
-        name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, (d+1), n_features_bytype, int(treatment_effect_hyperopt))
+        name_config = "simu_N{}_Ncontrol{}%3_nfeat{}_t{}".format(n_samples, int(perc_control*3 + 0.01), n_features_bytype, int(treatment_effect_hyperopt))
         n_trials = 150
         for generator_name in generators_sel:
             # n_trials = min(100, int(multiplier_trial * generators_dict[generator_name].get_n_hyperparameters(generator_name)))
@@ -358,7 +361,7 @@ def run(MC_id):
 
     MC_init = MC_id * n_MC_exp + 1
     MC_final = (MC_id + 1) * n_MC_exp
-    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_survVAE_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
+    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
    
 
 if __name__ == "__main__":
