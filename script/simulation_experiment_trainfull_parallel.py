@@ -91,7 +91,7 @@ def run(MC_id):
     n_samples = 600
     n_features_bytype = 6
     n_active_features = 3 
-    treatment_effect = 0.4
+    treatment_effect = 0.0
     p_treated = 0.5
     shape_T = 2.
     shape_C = 2.
@@ -357,7 +357,7 @@ def run(MC_id):
 
     MC_init = MC_id * n_MC_exp + 1
     MC_final = (MC_id + 1) * n_MC_exp
-    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_trainfull04_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
+    results.to_csv(f"{parent_path}/dataset/{dataset_name}/results_{metric_optuna}_n_samples_{n_samples}_n_features_bytype_{n_features_bytype}_MC_{MC_init}to{MC_final}.csv")
    
 
 if __name__ == "__main__":

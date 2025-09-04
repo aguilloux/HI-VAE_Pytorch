@@ -26,25 +26,19 @@ You can add your own datasets as long as they follow this structure.
 
 # Code Pre-requisites
 
-First,
+First, create an conda environment compatible with Synthcity,
 ```console
 $ cd HI-VAE
-$ conda create --name hivae
+$ conda create --name hivae python=3.12.9
 $ conda activate hivae
+$ pip install synthcity
 $ pip install -r pip_requirements.txt
-$ chmod +x script_HIVAE.sh
 ```
 
 Then, run preprocessing and tutorial on your data.
 
 
-To have an environment compatible with Synthcity,
 
-```console
-$ cd HI-VAE
-$ conda create --name env_synthcity python=3.12.9
-$ conda activate env_synthcity
-$ pip install synthcity
-$ pip install -r pip_requirements_synthcity.txt
-```
+
+
 

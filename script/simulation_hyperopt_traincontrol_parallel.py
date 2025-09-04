@@ -175,8 +175,8 @@ def run(generator_name):
                                                                                         metric=metric_optuna,
                                                                                         study_name=study_name, 
                                                                                         method=method_hyperopt, 
-                                                                                        gen_from_prior=gen_from_prior, 
-                                                                                        batchcorrect=True)
+                                                                                        gen_from_prior=gen_from_prior)
+                                                                                        # batchcorrect=True)
         best_params_dict[generator_name] = best_params
         study_dict[generator_name] = study
         with open(best_params_file, "w") as f:
@@ -211,7 +211,7 @@ def setup_unique_working_dir(base_dir="experiments"):
   
 
 if __name__ == "__main__":
-    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
-    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"] 
+    generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "Surv-GAN", "Surv-VAE", "HI-VAE_weibull_prior", "HI-VAE_piecewise_prior"]
+    # generators_sel = ["HI-VAE_weibull", "HI-VAE_piecewise", "HI-VAE_weibull_DP", "HI-VAE_piecewise_DP"] 
     generator_id = int(sys.argv[1])
     run(generators_sel[generator_id])
