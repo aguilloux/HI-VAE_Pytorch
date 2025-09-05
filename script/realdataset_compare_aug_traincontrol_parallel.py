@@ -145,21 +145,28 @@ def run(dataset_name, generators_sel):
         # Convert generated data into dataframe
         df_gen_control_dict = {}
         df_syn_dict = {}
+        df_log_p_value_control = pd.DataFrame(columns=["Generator", "log p_value"])
         for generator_name in generators_sel:
             list_df_gen_control = []
             data_syn = []
+            log_p_value_control_list = []
             for j in range(n_generated_dataset):
                 df_gen_control_j = pd.DataFrame(data_gen_control_dict[generator_name][j].numpy(), columns=fnames)
                 df_gen_control_j['treatment'] = 0
                 list_df_gen_control.append(df_gen_control_j)
                 data_syn.append(pd.concat([df_init_treated, df_gen_control_j], ignore_index=True))
+                log_p_value_control_list.append(compute_logrank_test(df_gen_control_j, df_init_control))
 
             df_gen_control_dict[generator_name] = list_df_gen_control
             df_syn_dict[generator_name] = data_syn
+            tmp_df = pd.DataFrame(np.array([[generator_name] * len(log_p_value_control_list), log_p_value_control_list]).T,
+                                  columns=["Generator", "log p_value"])
+            df_log_p_value_control = pd.concat([df_log_p_value_control, tmp_df])
 
         if not os.path.exists(parent_path + "/dataset/" + dataset_name + "/metric_results"):
             os.makedirs(parent_path + "/dataset/" + dataset_name + "/metric_results")
 
+        df_log_p_value_control.to_csv(parent_path + "/dataset/" + dataset_name + '/metric_results/traincontrol_aug_Ncontrol{}%3_p_value_df.csv'.format((d+1)), index=False)
         general_scores = []
         for generator_name in generators_sel:
             general_scores.append(general_metrics(df_init_control, df_gen_control_dict[generator_name], generator_name))
