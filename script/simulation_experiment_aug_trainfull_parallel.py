@@ -142,7 +142,7 @@ def run(MC_id):
     
     # MONTE-CARLO EXPERIMENT
     n_MC_exp = 11
-    treat_effects = np.array([0.2])  # np.array([0.6, 0.4, 0.2]) # np.array([0.8, 1.0]) # np.array([0.2, 0.6]) # np.arange(0., 1.1, 0.2) np.array([0.0, 0.4]) np.array([0.8, 1.0])
+    treat_effects = np.array([0.4])  # np.array([0.6, 0.4, 0.2]) # np.array([0.8, 1.0]) # np.array([0.2, 0.6]) # np.arange(0., 1.1, 0.2) np.array([0.0, 0.4]) np.array([0.8, 1.0])
     list_n_samples_control = [(1/3), (2/3), 1.0]
     n_generated_dataset = 200
     synthcity_metrics_sel = ['J-S distance', 'KS test', 'Survival curves distance',
